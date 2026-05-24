@@ -47,8 +47,8 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
       >
         <SheetHeader className="border-b border-neutral-900 pb-4">
           <SheetTitle className="text-xl font-black tracking-widest text-white flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-lime-400" />
-            MI <span className="text-lime-400">CARRITO</span>
+            <ShoppingBag className="h-5 w-5 text-amber-400" />
+            MI <span className="text-amber-400">CARRITO</span>
           </SheetTitle>
           <div className="flex justify-between items-center mt-1">
             <span className="text-[10px] uppercase font-bold tracking-widest text-neutral-500">
@@ -71,7 +71,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
             /* Estado Vacío */
             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-5">
               <div className="relative">
-                <div className="absolute inset-0 bg-lime-400/10 rounded-full filter blur-xl animate-pulse" />
+                <div className="absolute inset-0 bg-amber-400/10 rounded-full filter blur-xl animate-pulse" />
                 <div className="relative w-20 h-20 rounded-full border border-neutral-800 bg-neutral-900/40 flex items-center justify-center text-neutral-600">
                   <ShoppingBag className="h-10 w-10 stroke-1 text-neutral-500" />
                 </div>
@@ -79,13 +79,13 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-white uppercase tracking-wider">Tu carrito está vacío</h3>
                 <p className="text-xs text-neutral-500 max-w-[250px]">
-                  El sabor de la fiesta alemana te está esperando. Agrega tus botellas favoritas.
+                  Tu selección de licores premium te está esperando. Agrega tus expresiones favoritas.
                 </p>
               </div>
               <Button
                 onClick={handleClose}
                 size="sm"
-                className="bg-lime-400 text-neutral-950 font-extrabold text-xs uppercase tracking-widest hover:bg-lime-300 px-6 rounded-xl shadow-md transition-all cursor-pointer"
+                className="bg-amber-400 text-neutral-950 font-extrabold text-xs uppercase tracking-widest hover:bg-amber-300 px-6 rounded-xl shadow-md transition-all cursor-pointer"
               >
                 Explorar Catálogo
               </Button>
@@ -117,7 +117,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div className="space-y-0.5">
                       <div className="flex justify-between items-start gap-2">
-                        <h4 className="font-extrabold text-sm text-white truncate group-hover:text-lime-400 transition-colors">
+                        <h4 className="font-extrabold text-sm text-white truncate group-hover:text-amber-400 transition-colors">
                           {item.nombre}
                         </h4>
                         <button 
@@ -179,12 +179,12 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
             <div className="space-y-1.5">
               <div className="flex justify-between items-baseline">
                 <span className="text-xs uppercase font-extrabold tracking-widest text-neutral-500">Subtotal</span>
-                <span className="text-xl font-black text-lime-400">
+                <span className="text-xl font-black text-amber-400">
                   S/ {subtotal.toFixed(2)}
                 </span>
               </div>
               <p className="text-[10px] text-neutral-500 leading-relaxed uppercase tracking-wider text-center bg-neutral-950/40 p-2 rounded-xl border border-neutral-900/60">
-                🚚 Tarifas de envío e impuestos se calculan al confirmar tu distrito en el checkout.
+                Tarifas de envío se calculan al confirmar tu distrito en el checkout.
               </p>
             </div>
 
@@ -192,7 +192,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
               <Link 
                 href="/carrito" 
                 onClick={handleClose}
-                className="flex-1 flex h-12 items-center justify-center gap-2 rounded-xl bg-lime-400 hover:bg-lime-300 text-neutral-950 font-black text-xs uppercase tracking-widest shadow-lg shadow-lime-400/5 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
+                className="flex-1 flex h-12 items-center justify-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-400/5 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer"
               >
                 Proceder al Checkout
                 <ArrowRight className="h-4 w-4 stroke-[3px]" />

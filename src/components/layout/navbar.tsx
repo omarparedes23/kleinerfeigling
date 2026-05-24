@@ -108,8 +108,8 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-xl font-black tracking-widest text-white">
-            KLEINER<span className="text-lime-400">FEIGLING</span>
+          <Link href="/" className="text-xs font-black tracking-[0.22em] text-white uppercase flex items-center transition-opacity hover:opacity-90">
+            KLEINER<span className="text-amber-400 font-serif italic capitalize tracking-normal font-semibold ml-1.5 text-sm">Feigling</span>
           </Link>
           
           {/* Desktop Navigation Links */}
@@ -118,8 +118,8 @@ export function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className={`text-sm font-semibold tracking-wide transition-colors hover:text-lime-400 ${
-                  pathname === link.href ? "text-lime-400" : "text-neutral-400"
+                className={`text-sm font-semibold tracking-wide transition-colors hover:text-amber-400 ${
+                  pathname === link.href ? "text-amber-400" : "text-neutral-400"
                 }`}
               >
                 {link.name}
@@ -133,7 +133,7 @@ export function Navbar() {
           {isInstallable && (
             <button
               onClick={handleInstallClick}
-              className="border border-lime-400/20 bg-lime-950/20 px-3 h-9 text-xs font-bold text-lime-400 hover:bg-lime-400 hover:text-black transition-all shadow-[0_0_10px_rgba(163,230,53,0.1)] cursor-pointer rounded-full"
+              className="border border-amber-400/20 bg-amber-950/20 px-3 h-9 text-xs font-bold text-amber-400 hover:bg-amber-400 hover:text-black transition-all shadow-[0_0_10px_rgba(163,230,53,0.1)] cursor-pointer rounded-full"
             >
               Instalar App 📱
             </button>
@@ -141,10 +141,10 @@ export function Navbar() {
 
           <button 
             onClick={() => setIsCartOpen(true)} 
-            className="relative p-2 text-neutral-400 hover:text-lime-400 transition-colors cursor-pointer bg-transparent border-none"
+            className="relative p-2 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer bg-transparent border-none"
           >
             <ShoppingBag className="h-6 w-6" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-lime-400 text-[9px] font-black text-neutral-950">
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-neutral-950">
               {mounted ? totalItems : 0}
             </span>
           </button>
@@ -156,9 +156,9 @@ export function Navbar() {
             <div className="relative group flex items-center gap-2">
               <Link
                 href="/perfil"
-                className="flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 h-9 text-xs font-semibold text-neutral-300 hover:border-lime-400/50 hover:text-white transition-all"
+                className="flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 h-9 text-xs font-semibold text-neutral-300 hover:border-amber-400/50 hover:text-white transition-all"
               >
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-lime-400 text-neutral-950 font-black">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-neutral-950 font-black">
                   {user.email?.[0].toUpperCase() ?? "U"}
                 </div>
                 <span className="max-w-[100px] truncate">
@@ -198,7 +198,7 @@ export function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-2 rounded-full bg-lime-400 px-4 h-9 text-xs font-bold text-neutral-950 hover:bg-lime-300 shadow-md shadow-lime-400/10 hover:shadow-lime-400/20 transition-all cursor-pointer"
+              className="flex items-center gap-2 rounded-full bg-amber-400 px-4 h-9 text-xs font-bold text-neutral-950 hover:bg-amber-300 shadow-md shadow-amber-400/15 hover:shadow-amber-400/25 transition-all cursor-pointer"
             >
               <User className="h-3.5 w-3.5" />
               Ingresar
@@ -210,10 +210,10 @@ export function Navbar() {
         <div className="flex items-center gap-2 md:hidden">
           <button 
             onClick={() => setIsCartOpen(true)} 
-            className="relative p-2 text-neutral-400 hover:text-lime-400 transition-colors cursor-pointer bg-transparent border-none"
+            className="relative p-2 text-neutral-400 hover:text-amber-400 transition-colors cursor-pointer bg-transparent border-none"
           >
             <ShoppingBag className="h-6 w-6" />
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-lime-400 text-[9px] font-black text-neutral-950">
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-black text-neutral-950">
               {mounted ? totalItems : 0}
             </span>
           </button>
@@ -226,7 +226,7 @@ export function Navbar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 text-neutral-400 hover:text-lime-400 hover:bg-neutral-900"
+                  className="h-10 w-10 text-neutral-400 hover:text-amber-400 hover:bg-neutral-900"
                 />
               }
             >
@@ -237,11 +237,11 @@ export function Navbar() {
               className="w-[300px] border-l border-neutral-900 bg-neutral-950 p-6 text-white"
             >
               <SheetHeader className="text-left pb-4 border-b border-neutral-900 mb-6">
-                <SheetTitle className="text-lg font-black tracking-widest text-white">
-                  KLEINER<span className="text-lime-400">FEIGLING</span>
+                <SheetTitle className="text-xs font-black tracking-[0.22em] text-white uppercase flex items-center">
+                  KLEINER<span className="text-amber-400 font-serif italic capitalize tracking-normal font-semibold ml-1.5 text-sm">Feigling</span>
                 </SheetTitle>
-                <span className="text-[9px] uppercase font-bold tracking-[0.2em] text-neutral-500 mt-1 block">
-                  PWA Nightclub Experience
+                <span className="text-[9px] uppercase font-medium tracking-[0.2em] text-neutral-600 mt-1 block">
+                  Licores Premium · Lima, Perú
                 </span>
               </SheetHeader>
 
@@ -252,7 +252,7 @@ export function Navbar() {
                       setIsOpen(false);
                       handleInstallClick();
                     }}
-                    className="w-full border border-lime-400/20 bg-lime-950/20 px-3 h-11 text-xs font-bold text-lime-400 hover:bg-lime-400 hover:text-black transition-all shadow-[0_0_10px_rgba(163,230,53,0.1)] cursor-pointer rounded-xl flex items-center justify-center gap-2"
+                    className="w-full border border-amber-400/20 bg-amber-950/20 px-3 h-11 text-xs font-bold text-amber-400 hover:bg-amber-400 hover:text-black transition-all shadow-[0_0_10px_rgba(163,230,53,0.1)] cursor-pointer rounded-xl flex items-center justify-center gap-2"
                   >
                     Instalar App 📱
                   </button>
@@ -266,8 +266,8 @@ export function Navbar() {
                     key={link.name}
                     href={link.href}
                     onClick={() => setIsOpen(false)}
-                    className={`text-base font-bold tracking-wide transition-colors hover:text-lime-400 ${
-                      pathname === link.href ? "text-lime-400" : "text-neutral-300"
+                    className={`text-base font-bold tracking-wide transition-colors hover:text-amber-400 ${
+                      pathname === link.href ? "text-amber-400" : "text-neutral-300"
                     }`}
                   >
                     {link.name}
@@ -284,7 +284,7 @@ export function Navbar() {
                 ) : user ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-900/50 border border-neutral-900">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-lime-400 text-neutral-950 font-black">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400 text-neutral-950 font-black">
                         {user.email?.[0].toUpperCase() ?? "U"}
                       </div>
                       <div className="overflow-hidden">
@@ -303,7 +303,7 @@ export function Navbar() {
                         onClick={() => setIsOpen(false)}
                         className="flex w-full items-center gap-3 rounded-xl px-4 h-11 text-sm font-bold text-neutral-300 hover:bg-neutral-900 hover:text-white transition-all"
                       >
-                        <UserCircle className="h-5 w-5 text-lime-400" />
+                        <UserCircle className="h-5 w-5 text-amber-400" />
                         Mi Perfil
                       </Link>
                       <Link
@@ -311,7 +311,7 @@ export function Navbar() {
                         onClick={() => setIsOpen(false)}
                         className="flex w-full items-center gap-3 rounded-xl px-4 h-11 text-sm font-bold text-neutral-300 hover:bg-neutral-900 hover:text-white transition-all"
                       >
-                        <Package className="h-5 w-5 text-lime-400" />
+                        <Package className="h-5 w-5 text-amber-400" />
                         Mis Pedidos
                       </Link>
                       <button
@@ -331,7 +331,7 @@ export function Navbar() {
                   <Link
                     href="/login"
                     onClick={() => setIsOpen(false)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-lime-400 h-11 text-sm font-black text-neutral-950 hover:bg-lime-300 shadow-md shadow-lime-400/10 transition-all"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 h-11 text-sm font-black text-neutral-950 hover:bg-amber-300 shadow-md shadow-amber-400/10 transition-all"
                   >
                     <User className="h-4 w-4" />
                     Iniciar Sesión

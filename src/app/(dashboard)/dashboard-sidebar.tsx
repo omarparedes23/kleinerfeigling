@@ -36,7 +36,7 @@ export function DashboardSidebar({
     <div className="rounded-2xl border border-neutral-900 bg-neutral-950/40 backdrop-blur-xl p-6 space-y-6 shadow-2xl">
       {/* User Information Display */}
       <div className="flex flex-col items-center text-center pb-6 border-b border-neutral-900">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-lime-400 to-emerald-400 text-neutral-950 text-2xl font-black shadow-lg shadow-lime-400/10 mb-4 animate-pulse">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-amber-400 to-emerald-400 text-neutral-950 text-2xl font-black shadow-lg shadow-amber-400/10 mb-4 animate-pulse">
           {userInitial}
         </div>
         <h2 className="text-lg font-black text-white tracking-wide truncate max-w-full">
@@ -59,11 +59,11 @@ export function DashboardSidebar({
               href={item.href}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider transition-all duration-300 ${
                 isActive
-                  ? "bg-gradient-to-r from-lime-400/20 to-emerald-400/10 border border-lime-400/30 text-lime-400 shadow-[0_0_15px_rgba(163,230,53,0.15)]"
+                  ? "bg-gradient-to-r from-amber-400/20 to-emerald-400/10 border border-amber-400/30 text-amber-400 shadow-[0_0_15px_rgba(163,230,53,0.15)]"
                   : "border border-transparent text-neutral-400 hover:text-white hover:bg-neutral-900/50"
               }`}
             >
-              <Icon className={`h-4.5 w-4.5 ${isActive ? "text-lime-400" : "text-neutral-500"}`} />
+              <Icon className={`h-4.5 w-4.5 ${isActive ? "text-amber-400" : "text-neutral-500"}`} />
               <span>{item.name}</span>
             </Link>
           );

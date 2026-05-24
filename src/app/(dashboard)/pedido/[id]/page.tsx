@@ -78,7 +78,7 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
   const currentStepIndex = getStepIndex(order.estado);
 
   const stepperGradient = theme.text.includes("lime")
-    ? "from-lime-400 to-emerald-400"
+    ? "from-amber-400 to-emerald-400"
     : theme.text.includes("cyan")
     ? "from-cyan-400 to-teal-400"
     : theme.text.includes("pink")
@@ -112,7 +112,7 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
       <div className="rounded-2xl border border-neutral-900 bg-neutral-950/40 backdrop-blur-xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-xl">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black uppercase text-lime-400 tracking-[0.2em] flex items-center gap-1">
+            <span className="text-[9px] font-black uppercase text-amber-400 tracking-[0.2em] flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
               Live Order tracking
             </span>
@@ -322,7 +322,7 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
 
             <div className="space-y-3.5">
               <div className="flex gap-3 items-start">
-                <MapPin className="h-4.5 w-4.5 text-lime-400 mt-0.5 flex-shrink-0" />
+                <MapPin className="h-4.5 w-4.5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="space-y-0.5">
                   <span className="text-[8px] font-black uppercase text-neutral-500 tracking-wider">Dirección de Entrega</span>
                   <p className="text-xs text-neutral-200 font-bold leading-relaxed">{order.direccion_envio}</p>
@@ -331,7 +331,7 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
               </div>
 
               <div className="flex gap-3 items-start">
-                <Clock className="h-4.5 w-4.5 text-lime-400 mt-0.5 flex-shrink-0" />
+                <Clock className="h-4.5 w-4.5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="space-y-0.5">
                   <span className="text-[8px] font-black uppercase text-neutral-500 tracking-wider">Tiempo Estimado Courier</span>
                   <p className="text-xs text-neutral-200 font-bold">{order.distrito?.tiempo_estimado || "Express (mismo día)"}</p>
@@ -339,7 +339,7 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
               </div>
 
               <div className="flex gap-3 items-start">
-                <CreditCard className="h-4.5 w-4.5 text-lime-400 mt-0.5 flex-shrink-0" />
+                <CreditCard className="h-4.5 w-4.5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="space-y-0.5">
                   <span className="text-[8px] font-black uppercase text-neutral-500 tracking-wider">Método de Pago</span>
                   <p className="text-xs text-neutral-200 font-bold uppercase">{order.metodo_pago || "Tarjeta"}</p>
@@ -352,14 +352,14 @@ export default async function PedidoPage({ params }: PedidoPageProps) {
           {/* Courier Assignment Card */}
           {order.repartidor_asignado ? (
             <div className="rounded-2xl border border-neutral-900 bg-neutral-950/40 backdrop-blur-xl p-5 space-y-4 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 h-1.5 w-16 bg-lime-400" />
+              <div className="absolute top-0 right-0 h-1.5 w-16 bg-amber-400" />
               <h3 className="text-xs font-black uppercase tracking-widest text-neutral-400 flex items-center gap-1.5">
-                <Truck className="h-4 w-4 text-lime-400" />
+                <Truck className="h-4 w-4 text-amber-400" />
                 Courier Asignado
               </h3>
 
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-neutral-900 flex items-center justify-center text-sm font-black text-lime-400 border border-neutral-800 uppercase">
+                <div className="h-10 w-10 rounded-full bg-neutral-900 flex items-center justify-center text-sm font-black text-amber-400 border border-neutral-800 uppercase">
                   {order.repartidor_asignado[0]}
                 </div>
                 <div>

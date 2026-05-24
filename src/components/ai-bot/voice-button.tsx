@@ -37,7 +37,7 @@ export function VoiceButton({
       )}
 
       {isTranscribing && (
-        <div className="absolute h-16 w-16 rounded-full border border-t-purple-500 border-r-lime-400 border-b-rose-400 border-l-amber-400 animate-spin" />
+        <div className="absolute h-16 w-16 rounded-full border border-t-amber-500 border-r-amber-400 border-b-amber-600 border-l-amber-300 animate-spin" />
       )}
 
       {/* ─── Main Interactive Glowing Button ─── */}
@@ -49,7 +49,7 @@ export function VoiceButton({
             ? "bg-rose-500 text-white shadow-rose-500/30"
             : isTranscribing
               ? "bg-neutral-900 text-purple-400 cursor-wait shadow-purple-500/20"
-              : "bg-lime-400 text-neutral-950 hover:bg-lime-300 shadow-lime-400/20"
+              : "bg-amber-500 text-neutral-950 hover:bg-amber-400 shadow-amber-500/20"
         }`}
         disabled={isTranscribing}
       >

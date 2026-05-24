@@ -1,0 +1,26 @@
+# Visual Redesign Task Checklist
+
+- [x] 1. Overhaul `globals.css`:
+  - [x] Implement designer background grid `.lux-grid` with white/gold subtle lines.
+  - [x] Implement `.glass-card-premium` with ultra-thin border (`border-white/[0.08]`), `rounded-3xl`, deep drop shadow, and white inset light reflections.
+- [x] 2. Overhaul `product-card.tsx`:
+  - [x] Apply `.glass-card-premium` and `rounded-3xl` to the main container.
+  - [x] Replace stark white rectangle with frosted glass pedestal (`bg-gradient-to-b from-white/95 to-neutral-50/90 shadow-[inset_0_2px_8px_rgba(255,255,255,0.8),0_10px_25px_rgba(0,0,0,0.06)] rounded-3xl border border-white/20`).
+  - [x] Blend bottle PNGs perfectly and add floating animation on hover.
+  - [x] Style buy button as a beautiful premium capsule and support flavor-specific small violet elements for Original.
+- [x] 3. Overhaul `product-detail.tsx`:
+  - [x] Apply identical frosted glass pedestal to the detailed main bottle display in the gallery.
+  - [x] Style the three specs cards as individual sleek glass panels instead of simple thin borders.
+- [x] 4. Overhaul `page.tsx` (Homepage):
+  - [x] Add `.lux-grid` to the page background grid.
+  - [x] Enlarge "Asistente IA" hero button and style it as an inviting, glossy, premium glass trigger with a subtle pulsate/glow.
+  - [x] Add floating glossy premium glass Voice Assistant AI chatbot trigger at bottom-right.
+  - [x] Refactor the three value prop card boxes into elegant, highly rounded (`rounded-3xl`), semi-transparent glass cards with radial shadows and no cheap borders.
+- [x] 5. Overhaul `src/app/(shop)/productos/page.tsx` & `src/components/product/product-grid.tsx`:
+  - [x] Redesign layout density of the product grid catalog to be 4 columns on large screens.
+  - [x] Tighten layout elements on laptop screens.
+- [x] 6. Overhaul `navbar.tsx`:
+  - [x] Refactor the logo to be ultra-clean and polished (combining clean sans-serif with italic editorial serif).
+- [x] 7. Run Static Quality Checks:
+  - [x] Run `npx tsc --noEmit` and check for zero compilation errors.
+  - [x] Run `npx next lint` and check for zero lint errors.

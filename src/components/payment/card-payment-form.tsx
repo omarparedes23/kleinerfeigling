@@ -42,7 +42,7 @@ export function CardPaymentForm({ onChange, error }: CardPaymentFormProps) {
       <div
         className={`w-full rounded-xl border bg-black/60 backdrop-blur-md px-3.5 py-4 transition-all duration-300 ${
           focused
-            ? "border-lime-400 shadow-[0_0_12px_rgba(163,230,53,0.15)] ring-1 ring-lime-400/35"
+            ? "border-amber-400 shadow-[0_0_12px_rgba(163,230,53,0.15)] ring-1 ring-amber-400/35"
             : "border-neutral-800"
         } ${error ? "border-red-500 ring-1 ring-red-500/20" : ""}`}
       >

@@ -1,14 +1,25 @@
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { tools } from "@/lib/ai/chat-config";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { getTools } from "@/lib/ai/chat-config";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
-// Groq es compatible con la interfaz OpenAI — sin instalar paquete extra
 const groq = createOpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+const googleAI = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
+
 export const maxDuration = 60;
+
+// Fallback automático: cuando Gemini agota su cuota diaria, todas las
+// solicitudes restantes del proceso usan Groq hasta reiniciar el servidor.
+let geminiQuotaExhausted = false;
 
 const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner Feigling Perú. 🥂
 
@@ -28,26 +39,77 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 6. El delivery aplica solo en Lima metropolitana por ahora.
 7. Métodos de pago: tarjeta, Yape y Plin (todo a través de Culqi).
 8. Si un producto no tiene stock, sugiere alternativas de sabor similar.
+9. ✅ Para confirmar pedido: SIEMPRE recopila dirección exacta (calle, número, referencias) Y distrito ANTES de llamar confirmar_pedido_chat.
+10. ❌ NUNCA llames confirmar_pedido_chat sin tener dirección y distrito confirmados por el usuario.
+
+## REGLA ANTI-ALUCINACIÓN — HERRAMIENTAS (CRÍTICA)
+- ❌ **NUNCA afirmes haber ejecutado una acción sin haber llamado la herramienta correspondiente.**
+- ❌ **NUNCA digas "ya agregué X al carrito"** sin haber llamado `agregar_al_carrito` primero.
+- ❌ **NUNCA digas "tu pedido está confirmado"** sin haber llamado `confirmar_pedido_chat` primero.
+- Si el usuario confirma que quiere comprar → **LLAMA `agregar_al_carrito` PRIMERO**, luego responde con el resultado real de la herramienta.
+- La respuesta al usuario SIEMPRE debe basarse en el resultado real de la herramienta, nunca en suposiciones.
+
+## REGLA CRÍTICA PARA LLAMADAS A HERRAMIENTAS (MULTI-STEP)
+- ❌ **NUNCA generes texto, explicaciones ni respuestas intermedias cuando vayas a llamar a una herramienta.**
+- Si decides que necesitas usar una o varias herramientas, **ejecuta las llamadas de forma silenciosa e inmediata, sin escribir ningún mensaje de texto**.
+- **Espera a tener todos los resultados** de las herramientas en tu contexto.
+- **Genera tu respuesta conversacional ÚNICAMENTE en el paso final**, sintetizando toda la información en un solo mensaje consolidado.
+- ❌ **Cero Redundancia:** No repitas precios, stock ni la misma pregunta de compra varias veces en tu respuesta.
 
 ## HERRAMIENTAS — CUÁNDO USAR CADA UNA
 - listar_productos: cuando el usuario pregunta qué hay, qué tienen, el catálogo, o quiere ver todo.
 - buscar_producto: cuando el usuario pide algo específico por nombre o sabor (ej: "Green Lemon", "algo con cereza").
 - verificar_stock: SIEMPRE antes de confirmar disponibilidad de un producto específico.
 - calcular_envio: cuando el usuario da un distrito o pregunta cuánto es el delivery.
-- agregar_al_carrito: cuando el usuario confirma que quiere comprar.
+- agregar_al_carrito: cuando el usuario confirma que quiere agregar un producto al carrito.
 - buscar_receta: cuando el usuario pide cócteles, recetas o preparaciones.
+- ver_carrito_chat: cuando el usuario pregunta qué tiene en su carrito, quiere ver el total o está listo para confirmar su pedido.
+- confirmar_pedido_chat: SOLO cuando tengas dirección y distrito confirmados y el usuario haya dicho explícitamente que desea proceder al pago.
 
 ## FLUJO DE VENTA RECOMENDADO
 1. Saluda y pregunta qué desea el usuario.
 2. Si pregunta qué hay → usa listar_productos.
 3. Si pide algo específico → usa buscar_producto.
 4. Cuando el usuario elija → usa verificar_stock.
-5. Pregunta el distrito de delivery → usa calcular_envio.
-6. Calcula el total (productos + envío).
-7. Pide confirmación final.
-8. Deriva al checkout indicando que el pago se hará por Culqi (tarjeta, Yape o Plin).`;
+5. Si confirma que quiere agregar → usa agregar_al_carrito.
+6. Para el checkout → usa ver_carrito_chat para mostrar el resumen del carrito.
+7. Pregunta la dirección de entrega (calle, número, referencias).
+8. Pregunta el distrito → usa calcular_envio → muestra el total (subtotal + envío).
+9. Pide confirmación explícita: "¿Confirmas el pedido de S/ [total] con delivery a [dirección], [distrito]?"
+10. Si el usuario confirma → usa confirmar_pedido_chat con dirección, distrito y notas opcionales.
+11. La tarjeta de confirmación incluirá el botón para pagar por Culqi (tarjeta, Yape o Plin).`;
 
 export async function POST(request: Request) {
+  // 1. Obtener sesión y usuario de forma segura al inicio del handler
+  // getUser() contacta el servidor de Supabase Auth para validar el JWT (más seguro que getSession solo)
+  // getSession() se usa únicamente para extraer el access_token necesario para el cliente vanilla
+  let user = null;
+  let accessToken: string | undefined;
+  try {
+    const supabaseServer = await createServerSupabaseClient();
+    const [userResult, sessionResult] = await Promise.all([
+      supabaseServer.auth.getUser(),
+      supabaseServer.auth.getSession(),
+    ]);
+    user = userResult.data.user ?? null;
+    accessToken = sessionResult.data.session?.access_token;
+    console.log("🔒 [AUTH] User ID:", user?.id ?? "anónimo");
+  } catch (err: any) {
+    console.error("🔴 [AUTH ERROR]:", err.message);
+  }
+
+  // 2. Cliente Supabase sin cookies — seguro para uso asíncrono dentro del stream
+  // Autenticado vía Authorization header en lugar de cookies de Next.js
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    accessToken ? {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    } : undefined
+  );
+
+  const tools = getTools(supabase, user);
+
   const { messages } = (await request.json()) as {
     messages: CoreMessage[];
   };
@@ -60,8 +122,19 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text}"`);
   }
 
+  const useGemini =
+    !!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !geminiQuotaExhausted;
+
+  const model = useGemini
+    ? googleAI("gemini-2.5-flash")
+    : groq("llama-3.3-70b-versatile");
+
+  console.log(
+    `🤖 [MODEL] ${useGemini ? "Gemini 2.5 Flash" : "Groq Llama 3.3 70b"}${geminiQuotaExhausted ? " (fallback — Gemini quota agotada)" : ""}`,
+  );
+
   const result = streamText({
-    model: groq("llama-3.3-70b-versatile"),
+    model,
     system: SYSTEM_PROMPT,
     messages,
     tools,
@@ -71,6 +144,14 @@ export async function POST(request: Request) {
       toolCalls?.forEach((t) =>
         console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args)})`),
       );
+    },
+    onError: ({ error }) => {
+      console.error("🔴 [STREAM ERROR]:", error);
+      const msg = String((error as any)?.message ?? error);
+      if (msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+        geminiQuotaExhausted = true;
+        console.warn("⚠️ Gemini quota diaria agotada — próximas solicitudes usarán Groq automáticamente.");
+      }
     },
   });
 

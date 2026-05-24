@@ -263,7 +263,7 @@ function CarritoPageContent() {
         {/* Cabecera */}
         <div className="flex flex-col md:flex-row md:items-baseline md:justify-between gap-2 border-b border-neutral-900 pb-6">
           <h1 className="text-3xl font-black tracking-tight uppercase">
-            Mi <span className="text-lime-400">Carrito</span>
+            Mi <span className="text-amber-400">Carrito</span>
           </h1>
           <span className="text-xs uppercase font-extrabold tracking-widest text-neutral-500">
             PWA checkout rápido & seguro
@@ -274,7 +274,7 @@ function CarritoPageContent() {
           /* Estado vacío */
           <div className="rounded-3xl border border-neutral-900 bg-neutral-950/40 p-12 text-center backdrop-blur-md flex flex-col items-center justify-center max-w-xl mx-auto space-y-6">
             <div className="relative">
-              <div className="absolute inset-0 bg-lime-400/5 rounded-full filter blur-xl" />
+              <div className="absolute inset-0 bg-amber-400/5 rounded-full filter blur-xl" />
               <div className="relative w-24 h-24 rounded-full border border-neutral-800 bg-neutral-900/20 flex items-center justify-center text-neutral-600">
                 <ShoppingBag className="h-12 w-12 stroke-1 text-neutral-500" />
               </div>
@@ -288,7 +288,7 @@ function CarritoPageContent() {
             </div>
 
             <Link href="/productos">
-              <Button className="bg-lime-400 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-lime-300 px-8 h-12 shadow-lg shadow-lime-400/10 cursor-pointer">
+              <Button className="bg-amber-400 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-amber-300 px-8 h-12 shadow-lg shadow-amber-400/10 cursor-pointer">
                 Ver Catálogo de Productos
               </Button>
             </Link>
@@ -325,7 +325,7 @@ function CarritoPageContent() {
                       <div className="flex-1 flex flex-col justify-between min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <div>
-                            <h4 className="font-extrabold text-sm text-white group-hover:text-lime-400 transition-colors">
+                            <h4 className="font-extrabold text-sm text-white group-hover:text-amber-400 transition-colors">
                               {item.nombre}
                             </h4>
                             <span className="text-[10px] font-bold text-neutral-400 flex items-center gap-1 mt-0.5">
@@ -401,7 +401,7 @@ function CarritoPageContent() {
                   {/* CALCULADORA DE ENVÍO */}
                   <div className="space-y-3 bg-neutral-900/30 border border-neutral-900 p-4 rounded-xl">
                     <div className="flex items-center gap-2 text-xs font-black uppercase text-neutral-300 tracking-wider">
-                      <Truck className="h-4 w-4 text-lime-400" />
+                      <Truck className="h-4 w-4 text-amber-400" />
                       Calculadora de Delivery
                     </div>
                     
@@ -411,7 +411,7 @@ function CarritoPageContent() {
                       </label>
                       {loadingDistricts ? (
                         <div className="h-10 w-full flex items-center justify-center bg-neutral-950 rounded-xl border border-neutral-800">
-                          <Loader2 className="h-4 w-4 animate-spin text-lime-400 mr-2" />
+                          <Loader2 className="h-4 w-4 animate-spin text-amber-400 mr-2" />
                           <span className="text-xs text-neutral-500">Cargando distritos...</span>
                         </div>
                       ) : (
@@ -419,7 +419,7 @@ function CarritoPageContent() {
                           id="district-select"
                           value={selectedDistrictId}
                           onChange={(e) => setSelectedDistrictId(e.target.value === "" ? "" : Number(e.target.value))}
-                          className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-neutral-950 text-xs font-semibold text-white focus:outline-none focus:border-lime-400 transition-colors"
+                          className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-neutral-950 text-xs font-semibold text-white focus:outline-none focus:border-amber-400 transition-colors"
                         >
                           <option value="">-- Elige un distrito --</option>
                           {districts.map((d) => (
@@ -439,10 +439,10 @@ function CarritoPageContent() {
                           <span className="text-white">S/ {shippingFee.toFixed(2)}</span>
                         </div>
                         {selectedDistrict.tiempo_estimado && (
-                          <div className="flex items-center gap-1.5 text-[10px] text-lime-400 font-extrabold uppercase">
+                          <div className="flex items-center gap-1.5 text-[10px] text-amber-400 font-extrabold uppercase">
                             <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-lime-500"></span>
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                             </span>
                             ⚡ Tiempo Estimado: {selectedDistrict.tiempo_estimado}
                           </div>
@@ -461,7 +461,7 @@ function CarritoPageContent() {
                   {/* Fila Total */}
                   <div className="flex justify-between items-baseline">
                     <span className="text-sm uppercase font-black tracking-wider text-white">Total</span>
-                    <span className="text-2xl font-black text-lime-400">
+                    <span className="text-2xl font-black text-amber-400">
                       S/ {grandTotal.toFixed(2)}
                     </span>
                   </div>
@@ -472,7 +472,7 @@ function CarritoPageContent() {
                     disabled={!selectedDistrictId}
                     className={`w-full h-12 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${
                       selectedDistrictId
-                        ? "bg-lime-400 text-neutral-950 hover:bg-lime-300 shadow-lg shadow-lime-400/5 hover:scale-[1.01] active:scale-[0.99]"
+                        ? "bg-amber-400 text-neutral-950 hover:bg-amber-300 shadow-lg shadow-amber-400/5 hover:scale-[1.01] active:scale-[0.99]"
                         : "bg-neutral-900 text-neutral-600 border border-neutral-800 cursor-not-allowed"
                     }`}
                   >
@@ -498,17 +498,17 @@ function CarritoPageContent() {
           <div className="relative w-full max-w-md rounded-3xl border border-neutral-800 bg-neutral-950 p-6 shadow-2xl text-white space-y-6 overflow-hidden max-h-[90vh] overflow-y-auto">
             
             {/* Glow decorativo de fondo */}
-            <div className="absolute -top-12 -left-12 w-32 h-32 bg-lime-400/10 rounded-full filter blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-lime-400/10 rounded-full filter blur-3xl pointer-events-none" />
+            <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-400/10 rounded-full filter blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-amber-400/10 rounded-full filter blur-3xl pointer-events-none" />
 
             {!paymentSuccess ? (
               /* FORMULARIO DE PAGO STRIPE */
               <>
                 <div className="flex justify-between items-center border-b border-neutral-900 pb-3">
                   <div>
-                    <span className="text-[9px] uppercase font-black tracking-widest text-lime-400">Pasarela Segura</span>
+                    <span className="text-[9px] uppercase font-black tracking-widest text-amber-400">Pasarela Segura</span>
                     <h3 className="text-base font-black tracking-wider flex items-center gap-1.5 text-white uppercase mt-0.5">
-                      <CreditCard className="h-4 w-4 text-lime-400" />
+                      <CreditCard className="h-4 w-4 text-amber-400" />
                       Stripe Checkout
                     </h3>
                   </div>
@@ -534,7 +534,7 @@ function CarritoPageContent() {
                   <Separator className="bg-neutral-850 my-1.5" />
                   <div className="flex justify-between font-black text-sm">
                     <span>Monto Total:</span>
-                    <span className="text-lime-400">S/ {grandTotal.toFixed(2)}</span>
+                    <span className="text-amber-400">S/ {grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -553,7 +553,7 @@ function CarritoPageContent() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       disabled={paymentLoading}
-                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-lime-400 transition-colors"
+                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-amber-400 transition-colors"
                     />
                   </div>
 
@@ -570,7 +570,7 @@ function CarritoPageContent() {
                       value={direccionEnvio}
                       onChange={(e) => setDireccionEnvio(e.target.value)}
                       disabled={paymentLoading}
-                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-lime-400 transition-colors"
+                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-amber-400 transition-colors"
                     />
                   </div>
 
@@ -586,7 +586,7 @@ function CarritoPageContent() {
                       value={notas}
                       onChange={(e) => setNotas(e.target.value)}
                       disabled={paymentLoading}
-                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-lime-400 transition-colors"
+                      className="w-full h-10 px-3 rounded-xl border border-neutral-800 bg-black text-white focus:outline-none focus:border-amber-400 transition-colors"
                     />
                   </div>
 
@@ -596,7 +596,7 @@ function CarritoPageContent() {
                   <Button
                     type="submit"
                     disabled={paymentLoading}
-                    className="w-full h-12 bg-lime-400 hover:bg-lime-300 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 mt-4 transition-all shadow-lg shadow-lime-400/5 cursor-pointer"
+                    className="w-full h-12 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 mt-4 transition-all shadow-lg shadow-amber-400/5 cursor-pointer"
                   >
                     {paymentLoading ? (
                       <>
@@ -634,7 +634,7 @@ function CarritoPageContent() {
                   </div>
                   <div className="flex justify-between text-neutral-500">
                     <span>Costo total:</span>
-                    <span className="font-bold text-lime-400">S/ {grandTotal.toFixed(2)}</span>
+                    <span className="font-bold text-amber-400">S/ {grandTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-neutral-500">
                     <span>Dirección:</span>
@@ -654,7 +654,7 @@ function CarritoPageContent() {
 
                 <Button
                   onClick={handleFinishSuccess}
-                  className="w-full h-11 bg-lime-400 hover:bg-lime-300 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer"
+                  className="w-full h-11 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer"
                 >
                   Entendido & Volver al Inicio
                 </Button>

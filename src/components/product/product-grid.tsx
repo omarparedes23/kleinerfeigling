@@ -48,13 +48,13 @@ export function ProductGrid({
           {/* Chip para 'Todos' */}
           <button
             onClick={() => handleCategorySelect(null)}
-            className={`cursor-pointer px-5 py-2.5 rounded-full border text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${
+            className={`cursor-pointer px-6 py-3.5 rounded-full border text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2.5 ${
               selectedCategorySlug === null
-                ? "bg-lime-400 border-lime-400 text-black shadow-[0_0_15px_rgba(163,230,53,0.3)] hover:bg-lime-300"
-                : "border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-600 hover:text-white"
+                ? "bg-amber-400 border-amber-400 text-black shadow-[0_4px_20px_rgba(245,158,11,0.35)] hover:bg-amber-300"
+                : "border-white/[0.05] bg-white/[0.02] text-neutral-400 backdrop-blur-md hover:border-white/20 hover:text-white hover:bg-white/[0.05]"
             }`}
           >
-            <ShoppingBag className="h-3.5 w-3.5" />
+            <ShoppingBag className="h-4.5 w-4.5 shrink-0" />
             Todos
           </button>
 
@@ -67,13 +67,13 @@ export function ProductGrid({
               <button
                 key={category.id}
                 onClick={() => handleCategorySelect(category.slug)}
-                className={`cursor-pointer px-5 py-2.5 rounded-full border text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${
+                className={`cursor-pointer px-6 py-3.5 rounded-full border text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2.5 ${
                   isSelected
-                    ? `${theme.accentBg} ${theme.border} text-black shadow-[0_0_15px_rgba(255,255,255,0.1)]`
-                    : `border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-600 hover:text-white`
+                    ? `${theme.accentBg} ${theme.border} text-black shadow-[0_4px_20px_rgba(255,255,255,0.15)]`
+                    : "border-white/[0.05] bg-white/[0.02] text-neutral-400 backdrop-blur-md hover:border-white/20 hover:text-white hover:bg-white/[0.05]"
                 }`}
               >
-                <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-black' : theme.text.replace('text-', 'bg-')}`} />
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 transition-all ${isSelected ? 'bg-black scale-110' : theme.text.replace('text-', 'bg-')}`} />
                 {category.nombre}
               </button>
             );
@@ -83,13 +83,13 @@ export function ProductGrid({
 
       {/* SKELETONS O GRID DE PRODUCTOS */}
       {isPending ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(8)].map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
         </div>
       ) : products.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 animate-in fade-in duration-300">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 animate-in fade-in duration-300">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -119,7 +119,7 @@ export function ProductGrid({
 // Beautiful Glassmorphic Skeleton Loader
 function ProductCardSkeleton() {
   return (
-    <div className="rounded-2xl bg-neutral-950/20 border border-neutral-900/60 p-5 space-y-4 flex flex-col justify-between h-[420px] animate-pulse">
+    <div className="rounded-3xl glass-card-premium p-5 space-y-4 flex flex-col justify-between h-[420px] animate-pulse">
       <div className="space-y-4">
         {/* Head */}
         <div className="flex justify-between items-center">

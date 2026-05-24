@@ -3,14 +3,22 @@ import OpenAI from "openai";
 
 export const maxDuration = 30;
 
-// Groq expone Whisper con la misma interfaz de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
-
 export async function POST(request: NextRequest) {
   try {
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      console.warn("🎙️ [VOZ] Intento de transcripción sin GROQ_API_KEY configurado.");
+      return NextResponse.json(
+        { error: "Por favor, descomenta o configura GROQ_API_KEY en tu archivo .env.local para usar la transcripción por voz." },
+        { status: 400 },
+      );
+    }
+
+    const openai = new OpenAI({
+      apiKey: groqKey,
+      baseURL: "https://api.groq.com/openai/v1",
+    });
+
     const formData = await request.formData();
     const audio = formData.get("audio");
 

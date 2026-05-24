@@ -180,7 +180,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
     };
     
     addItem(customProduct, quantity, selectedVolume);
-    toast.success(`🎉 ${quantity} botella${quantity > 1 ? "s" : ""} de ${product.nombre} (${selectedVolume}ml) agregada${quantity > 1 ? "s" : ""} al carrito!`, {
+    toast.success(`${quantity} botella${quantity > 1 ? "s" : ""} de ${product.nombre} (${selectedVolume}ml) agregada${quantity > 1 ? "s" : ""} al carrito.`, {
       description: "Puedes seguir comprando o ir al checkout en el menú superior.",
       duration: 3000,
     });
@@ -203,7 +203,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* SECCIÓN IMAGEN: Pedestal premium blanco */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="relative aspect-square w-full rounded-3xl bg-gradient-to-b from-white to-neutral-50/95 border border-neutral-200/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06),0_10px_20px_-5px_rgba(0,0,0,0.25)] transition-all duration-500 overflow-hidden flex items-center justify-center p-6 group">
+            <div className="relative aspect-square w-full rounded-3xl bg-gradient-to-b from-white/95 to-neutral-50/90 shadow-[inset_0_2px_8px_rgba(255,255,255,0.8),0_10px_25px_rgba(0,0,0,0.06)] border border-white/20 transition-all duration-500 overflow-hidden flex items-center justify-center p-6 group">
               
               {/* Reflejo glassmorphism */}
               <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 pointer-events-none" />
@@ -214,11 +214,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
               {/* Botella del producto */}
               {product.imagen_url ? (
-                <div className="relative w-4/5 h-4/5 flex items-center justify-center transition-transform duration-500 group-hover:scale-105">
+                <div className="relative w-4/5 h-4/5 flex items-center justify-center transition-all duration-700 ease-out group-hover:scale-[1.06] group-hover:-translate-y-3">
                   <img
                     src={imagesToShow[activeImageIndex]}
                     alt={product.nombre}
-                    className="object-contain max-h-full drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] filter contrast-110 mix-blend-multiply"
+                    className="object-contain max-h-full drop-shadow-[0_20px_35px_rgba(0,0,0,0.25)] group-hover:drop-shadow-[0_32px_45px_rgba(0,0,0,0.35)] transition-all duration-700 filter contrast-110 mix-blend-multiply"
                   />
                 </div>
               ) : (
@@ -250,7 +250,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                     onClick={() => setActiveImageIndex(index)}
                     className={`relative w-16 h-16 rounded-xl overflow-hidden border bg-neutral-950 transition-all ${
                       activeImageIndex === index 
-                        ? `${theme.border} ring-1 ring-offset-2 ring-offset-black ring-lime-400` 
+                        ? `${theme.border} ring-1 ring-offset-2 ring-offset-black ring-amber-400` 
                         : "border-neutral-800 hover:border-neutral-600"
                     }`}
                   >
@@ -284,32 +284,32 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 {product.nombre}
               </h1>
               <p className="text-base text-neutral-400 leading-relaxed max-w-xl">
-                {product.descripcion || product.descripcion_corta || "Exquisito licor alemán Kleiner Feigling. Disfruta de la mejor calidad internacional y un sabor inigualable de fiesta."}
+                {product.descripcion || product.descripcion_corta || "Licor alemán Kleiner Feigling. Calidad de importación directa con un perfil de sabor único."}
               </p>
             </div>
 
             {/* Especificaciones Premium */}
-            <div className="grid grid-cols-3 gap-3 p-4 rounded-2xl bg-neutral-950/60 border border-neutral-900 backdrop-blur-md">
-              <div className="flex flex-col items-center justify-center py-2 text-center border-r border-neutral-900">
-                <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Volumen</span>
-                <span className="text-base font-black text-white mt-1 flex items-center gap-1">
-                  <Droplet className="h-3.5 w-3.5 text-blue-400" />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center justify-center py-4 px-3 text-center rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-[0_10px_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.04]">
+                <span className="text-[10px] uppercase font-extrabold text-neutral-500 tracking-widest">Volumen</span>
+                <span className="text-base font-black text-white mt-2.5 flex items-center gap-1">
+                  <Droplet className="h-4 w-4 text-blue-400" />
                   {selectedVolume} ml
                 </span>
               </div>
-              <div className="flex flex-col items-center justify-center py-2 text-center border-r border-neutral-900">
-                <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Graduación</span>
-                <span className="text-base font-black text-white mt-1 flex items-center gap-1">
-                  <Flame className="h-3.5 w-3.5 text-amber-500" />
+              <div className="flex flex-col items-center justify-center py-4 px-3 text-center rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-[0_10px_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.04]">
+                <span className="text-[10px] uppercase font-extrabold text-neutral-500 tracking-widest">Graduación</span>
+                <span className="text-base font-black text-white mt-2.5 flex items-center gap-1">
+                  <Flame className="h-4 w-4 text-amber-500" />
                   {product.graduacion || 15}% Vol
                 </span>
               </div>
-              <div className="flex flex-col items-center justify-center py-2 text-center">
-                <span className="text-[10px] uppercase font-bold text-neutral-500 tracking-wider">Stock</span>
-                <span className="text-base font-black text-white mt-1">
+              <div className="flex flex-col items-center justify-center py-4 px-3 text-center rounded-2xl bg-white/[0.02] border border-white/[0.05] shadow-[0_10px_20px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:border-white/[0.1] hover:bg-white/[0.04]">
+                <span className="text-[10px] uppercase font-extrabold text-neutral-500 tracking-widest">Stock</span>
+                <span className="text-base font-black text-white mt-2.5">
                   {product.stock > 0 ? (
                     <span className="text-emerald-400 flex items-center gap-1 justify-center">
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-4 w-4" />
                       {product.stock} u.
                     </span>
                   ) : (
@@ -427,7 +427,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
             {/* Detalle PWA Delivery */}
             <p className="text-[10px] text-neutral-600 text-center uppercase tracking-widest mt-1">
-              🚚 Delivery express disponible para Lima Metropolitana
+              Delivery express disponible para Lima Metropolitana
             </p>
 
           </div>
@@ -441,7 +441,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 <GlassWater className={`h-6 w-6 ${theme.text}`} />
                 Cócteles Sugeridos con {product.sabor || "Original"}
               </h2>
-              <p className="text-sm text-neutral-500 mt-1">Saca el máximo provecho a tu Kleiner Feigling preparando estas increíbles recetas de discoteca en casa.</p>
+              <p className="text-sm text-neutral-500 mt-1">Combinaciones curadas para cada expresión. Descubre el potencial de tu Kleiner Feigling en cada preparación.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,13 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
-import { Outfit } from "next/font/google";
+import { Outfit, Cormorant_Garamond } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { CartProvider } from "@/components/cart/cart-provider";
 
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-cormorant",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 
@@ -43,13 +50,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={cn("antialiased", "font-sans", outfit.variable)}>
+    <html lang="es" className={cn("antialiased", "font-sans", outfit.variable, cormorant.variable)}>
       <body className="min-h-dvh bg-background text-foreground relative overflow-x-hidden">
-        {/* Floating Nightclub Spotlights background */}
+        {/* Subtle luxury ambient */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-lime-400/8 blur-[120px] animate-spot-slow" />
-          <div className="absolute bottom-[20%] right-[-15%] w-[45vw] h-[45vw] rounded-full bg-indigo-500/8 blur-[100px] animate-spot-fast" />
-          <div className="absolute top-[40%] left-[30%] w-[35vw] h-[35vw] rounded-full bg-pink-500/6 blur-[110px] animate-spot-slow" />
+          <div className="absolute top-0 right-0 w-[50vw] h-[60vh] rounded-full bg-amber-500/4 blur-[140px]" />
+          <div className="absolute bottom-0 left-0 w-[40vw] h-[40vh] rounded-full bg-amber-700/3 blur-[120px]" />
         </div>
 
         <div className="relative z-10 flex flex-col min-h-dvh">

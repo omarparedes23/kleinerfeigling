@@ -75,7 +75,7 @@ export default async function PedidosPage() {
       {/* Page Title Header */}
       <div>
         <h1 className="text-2xl font-black text-white tracking-wide uppercase flex items-center gap-2">
-          <Ticket className="h-6 w-6 text-lime-400 rotate-[-10deg]" />
+          <Ticket className="h-6 w-6 text-amber-400 rotate-[-10deg]" />
           Mis Pases de Fiesta (Pedidos)
         </h1>
         <p className="text-xs text-neutral-500 mt-1">
@@ -97,7 +97,7 @@ export default async function PedidosPage() {
           </div>
           <Link
             href="/productos"
-            className="inline-flex items-center gap-2 rounded-xl bg-lime-400 px-5 h-10 text-xs font-black text-neutral-950 hover:bg-lime-300 transition-all uppercase tracking-wider"
+            className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 h-10 text-xs font-black text-neutral-950 hover:bg-amber-300 transition-all uppercase tracking-wider"
           >
             Ir a la tienda
           </Link>
@@ -112,10 +112,10 @@ export default async function PedidosPage() {
             return (
               <div 
                 key={order.id}
-                className="relative group overflow-hidden rounded-3xl border border-neutral-900 bg-neutral-950/40 backdrop-blur-xl transition-all duration-300 hover:border-lime-500/20 hover:shadow-[0_0_30px_rgba(163,230,53,0.05)]"
+                className="relative group overflow-hidden rounded-3xl border border-neutral-900 bg-neutral-950/40 backdrop-blur-xl transition-all duration-300 hover:border-amber-500/20 hover:shadow-[0_0_30px_rgba(163,230,53,0.05)]"
               >
                 {/* Background decorative glow on hover */}
-                <div className="absolute -right-20 -bottom-20 w-44 h-44 rounded-full bg-lime-400/5 filter blur-[50px] group-hover:bg-lime-400/10 transition-all duration-500" />
+                <div className="absolute -right-20 -bottom-20 w-44 h-44 rounded-full bg-amber-400/5 filter blur-[50px] group-hover:bg-amber-400/10 transition-all duration-500" />
                 
                 <div className="flex flex-col md:flex-row items-stretch">
                   
@@ -123,7 +123,7 @@ export default async function PedidosPage() {
                   <div className="flex-1 p-6 md:p-8 space-y-6">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div className="space-y-1">
-                        <span className="text-[9px] font-black uppercase text-lime-400 tracking-[0.2em] flex items-center gap-1">
+                        <span className="text-[9px] font-black uppercase text-amber-400 tracking-[0.2em] flex items-center gap-1">
                           <Sparkles className="h-3 w-3" />
                           KF Nightclub Pass
                         </span>
@@ -144,7 +144,7 @@ export default async function PedidosPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-neutral-900/60">
                       {/* Date details */}
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-lime-400 transition-colors">
+                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-amber-400 transition-colors">
                           <Calendar className="h-4.5 w-4.5" />
                         </div>
                         <div className="space-y-0.5">
@@ -155,7 +155,7 @@ export default async function PedidosPage() {
 
                       {/* Shipping details */}
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-lime-400 transition-colors">
+                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-amber-400 transition-colors">
                           <MapPin className="h-4.5 w-4.5" />
                         </div>
                         <div className="space-y-0.5">
@@ -166,7 +166,7 @@ export default async function PedidosPage() {
 
                       {/* Payment method */}
                       <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-lime-400 transition-colors">
+                        <div className="h-9 w-9 rounded-xl bg-neutral-900 flex items-center justify-center text-neutral-500 group-hover:text-amber-400 transition-colors">
                           <CreditCard className="h-4.5 w-4.5" />
                         </div>
                         <div className="space-y-0.5">
@@ -193,7 +193,7 @@ export default async function PedidosPage() {
                       <span className="text-[8px] font-black uppercase text-neutral-500 tracking-[0.2em] block">
                         Costo Total
                       </span>
-                      <span className="text-2xl font-black text-lime-400 block tracking-tight">
+                      <span className="text-2xl font-black text-amber-400 block tracking-tight">
                         S/ {Number(order.total).toFixed(2)}
                       </span>
                     </div>
@@ -214,7 +214,7 @@ export default async function PedidosPage() {
 
                     <Link
                       href={`/pedido/${order.id}`}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-white text-neutral-950 font-black h-10 px-4 text-[10px] uppercase tracking-wider hover:bg-lime-400 transition-all cursor-pointer shadow-md shadow-white/5 active:scale-95"
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-white text-neutral-950 font-black h-10 px-4 text-[10px] uppercase tracking-wider hover:bg-amber-400 transition-all cursor-pointer shadow-md shadow-white/5 active:scale-95"
                     >
                       Ver Tracking
                       <ChevronRight className="h-3.5 w-3.5 stroke-[3px]" />

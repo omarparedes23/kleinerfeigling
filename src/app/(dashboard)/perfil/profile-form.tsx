@@ -59,7 +59,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
               name="nombre"
               defaultValue={profile.nombre}
               placeholder="Ingresa tu nombre"
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-lime-400 focus:ring-1 focus:ring-lime-400 transition-all duration-300 font-medium"
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all duration-300 font-medium"
             />
             {state?.errors?.nombre && (
               <p className="text-xs text-rose-500 font-semibold mt-1">
@@ -79,7 +79,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
               name="apellido"
               defaultValue={profile.apellido}
               placeholder="Ingresa tu apellido"
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-lime-400 focus:ring-1 focus:ring-lime-400 transition-all duration-300 font-medium"
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all duration-300 font-medium"
             />
             {state?.errors?.apellido && (
               <p className="text-xs text-rose-500 font-semibold mt-1">
@@ -115,7 +115,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
               name="telefono"
               defaultValue={profile.telefono || ""}
               placeholder="Ej: +51 987 654 321"
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-lime-400 focus:ring-1 focus:ring-lime-400 transition-all duration-300 font-medium"
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all duration-300 font-medium"
             />
             {state?.errors?.telefono && (
               <p className="text-xs text-rose-500 font-semibold mt-1">
@@ -136,7 +136,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
             name="direccion"
             defaultValue={profile.direccion || ""}
             placeholder="Ej: Av. Benavides 1234, Dpto 402"
-            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-lime-400 focus:ring-1 focus:ring-lime-400 transition-all duration-300 font-medium"
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all duration-300 font-medium"
           />
           {state?.errors?.direccion && (
             <p className="text-xs text-rose-500 font-semibold mt-1">
@@ -157,7 +157,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
                 name="distrito_id"
                 value={selectedDistritoId}
                 onChange={(e) => setSelectedDistritoId(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-lime-400 focus:ring-1 focus:ring-lime-400 transition-all duration-300 font-medium cursor-pointer"
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all duration-300 font-medium cursor-pointer"
               >
                 <option value="">Selecciona tu distrito...</option>
                 {distritos.map((distrito) => (
@@ -176,9 +176,9 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
             {/* Dynamic District Cost Calculator Highlight Panel */}
             <div className="md:col-span-5 w-full">
               {selectedDistrito ? (
-                <div className="p-3.5 rounded-xl border border-lime-400/20 bg-lime-950/10 text-lime-400 flex items-center justify-between shadow-[0_0_15px_rgba(163,230,53,0.05)] animate-in fade-in slide-in-from-top-1 duration-300">
+                <div className="p-3.5 rounded-xl border border-amber-400/20 bg-amber-950/10 text-amber-400 flex items-center justify-between shadow-[0_0_15px_rgba(163,230,53,0.05)] animate-in fade-in slide-in-from-top-1 duration-300">
                   <div className="space-y-0.5">
-                    <span className="text-[8px] uppercase font-black tracking-widest text-lime-500 block">
+                    <span className="text-[8px] uppercase font-black tracking-widest text-amber-500 block">
                       Tarifa Envío
                     </span>
                     <span className="text-xs font-black uppercase text-neutral-200">
@@ -210,7 +210,7 @@ export function ProfileForm({ profile, distritos }: ProfileFormProps) {
           <button
             type="submit"
             disabled={isPending}
-            className="bg-gradient-to-r from-lime-400 to-emerald-400 hover:from-lime-300 hover:to-emerald-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.4)] text-neutral-950 font-black h-12 px-6 rounded-xl transition-all duration-300 uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
+            className="bg-gradient-to-r from-amber-400 to-emerald-400 hover:from-amber-300 hover:to-emerald-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.4)] text-neutral-950 font-black h-12 px-6 rounded-xl transition-all duration-300 uppercase tracking-wider text-xs cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
           >
             {isPending ? (
               <>

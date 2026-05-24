@@ -1,22 +1,19 @@
 import Link from "next/link";
-import { 
-  Sparkles, 
-  MessageSquareCode, 
-  ShoppingBag, 
-  Flame, 
-  Truck, 
+import {
+  MessageSquareCode,
+  Truck,
   ArrowRight,
-  TrendingUp
+  Leaf,
+  Award
 } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/product/product-card";
-import { Badge } from "@/components/ui/badge";
 import type { ProductWithCategory, Category } from "@/types/product";
+import { HeroSection } from "@/components/home/hero-section";
 
 export default async function HomePage() {
   const supabase = await createServerSupabaseClient();
 
-  // Fetch featured products from Supabase
   const { data: featuredData, error } = await supabase
     .from("kleiner_products")
     .select("*, categoria:kleiner_categories(*)")
@@ -34,135 +31,86 @@ export default async function HomePage() {
   }));
 
   return (
-    <main className="min-h-screen bg-black text-white overflow-hidden">
-      
-      {/* 1. HERO SECTION: High-Fidelity Nightclub Atmosphere */}
-      <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-20 text-center">
-        {/* Glowing backgrounds */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] sm:w-[500px] h-[350px] sm:h-[500px] rounded-full bg-indigo-500/10 filter blur-[90px] pointer-events-none animate-pulse duration-10000" />
-        <div className="absolute bottom-1/4 left-1/3 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] rounded-full bg-lime-500/10 filter blur-[90px] pointer-events-none animate-pulse duration-7000" />
+    <main className="min-h-screen bg-black text-white overflow-hidden lux-grid">
 
-        {/* Diagonal lighting layout */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_60%,transparent_100%)]" />
+      {/* 1. HERO: Interactive Luxury Hero Section */}
+      <HeroSection />
 
-        <div className="relative z-10 mx-auto max-w-4xl space-y-8">
-          {/* Subtitle Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-lime-400/20 bg-lime-950/20 text-lime-400 text-xs font-black uppercase tracking-widest animate-fade-in shadow-[0_0_15px_rgba(163,230,53,0.1)]">
-            <Sparkles className="h-3 w-3 animate-spin" />
-            PWA Nightclub Experience en Perú
-          </div>
-
-          {/* Glowing Brand Title */}
-          <div className="space-y-4">
-            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter uppercase leading-[0.9]">
-              KLEINER <br className="sm:hidden" />
-              <span className="bg-gradient-to-r from-lime-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_4px_20px_rgba(163,230,53,0.25)]">
-                FEIGLING
-              </span>
-            </h1>
-            <p className="text-base sm:text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-              El vodka alemán con higos y sabores más fiestero del planeta llegó a Lima. Compra con nuestra <strong>IA de Voz</strong> y recíbelo en tiempo récord.
-            </p>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto pt-4">
-            <Link
-              href="/productos"
-              className="w-full sm:w-auto inline-flex h-13 items-center justify-center rounded-2xl bg-lime-400 px-8 font-black uppercase text-xs tracking-wider text-black hover:bg-lime-300 transition-all hover:scale-[1.02] shadow-lg shadow-lime-400/20 hover:shadow-lime-400/30 cursor-pointer"
-            >
-              <ShoppingBag className="mr-2 h-4 w-4 stroke-[3px]" />
-              Ver Catálogo
-            </Link>
-            <Link
-              href="/chat"
-              className="w-full sm:w-auto inline-flex h-13 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-950/80 px-8 font-black uppercase text-xs tracking-wider text-white hover:border-neutral-700 hover:bg-neutral-900 transition-all hover:scale-[1.02] cursor-pointer"
-            >
-              <MessageSquareCode className="mr-2 h-4 w-4 text-lime-400" />
-              Pedir con Voz
-            </Link>
-          </div>
-        </div>
-
-        {/* Feature stats summary line */}
-        <div className="absolute bottom-8 left-0 right-0 border-t border-neutral-900/50 bg-black/60 backdrop-blur-md py-4">
-          <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row gap-6 justify-around text-[10px] sm:text-xs font-black uppercase text-neutral-400 tracking-[0.2em]">
-            <span>🇩🇪 100% Importado de Alemania</span>
-            <span className="hidden sm:inline">•</span>
-            <span>⚡ Delivery Express en Lima</span>
-            <span className="hidden sm:inline">•</span>
-            <span>🛡️ Transacciones seguras con Culqi</span>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. VALUE PROPOSITION: Premium nightclubs grid */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 border-t border-neutral-950">
+      {/* 2. VALUE PROPS */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 border-t border-neutral-900/40">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-          
-          <div className="group rounded-2xl bg-neutral-950/40 border border-neutral-900 p-6 space-y-4 hover:border-lime-500/20 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-lime-950/40 border border-lime-400/20 flex items-center justify-center text-lime-400 group-hover:scale-110 transition-transform">
-              <Flame className="h-6 w-6" />
+
+          {/* Card 1 - Origen Certificado (Amber Glow) */}
+          <div className="group relative rounded-3xl bg-neutral-950/20 border border-white/[0.04] p-8 space-y-6 overflow-hidden transition-all duration-500 hover:bg-neutral-950/45 hover:-translate-y-1.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.02),0_20px_40px_rgba(0,0,0,0.5)] hover:border-amber-500/30 hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_25px_50px_rgba(0,0,0,0.7),0_0_25px_rgba(245,158,11,0.06)] backdrop-blur-md">
+            <div className="absolute top-0 left-0 w-32 h-32 rounded-full bg-amber-500/5 blur-[40px] pointer-events-none group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative w-12 h-12 rounded-2xl bg-amber-950/40 border border-amber-400/15 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:border-amber-400/30 transition-all duration-500">
+              <Award className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-bold text-white uppercase">El Alma de la Fiesta</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">
-              Famoso en las discotecas europeas por su juego icónico y sus botellas con ojos locos que brillan bajo la luz ultravioleta.
-            </p>
+            <div className="space-y-2 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest font-sans group-hover:text-amber-400 transition-colors">Origen Certificado</h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Destilado y embotellado en Alemania bajo los más estrictos estándares de calidad. Cada botella es garantía de autenticidad.
+              </p>
+            </div>
           </div>
 
-          <div className="group rounded-2xl bg-neutral-950/40 border border-neutral-900 p-6 space-y-4 hover:border-indigo-500/20 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-indigo-950/40 border border-indigo-400/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-              <MessageSquareCode className="h-6 w-6" />
+          {/* Card 2 - Asistente IA de Voz (Purple Glow) */}
+          <div className="group relative rounded-3xl bg-neutral-950/20 border border-white/[0.04] p-8 space-y-6 overflow-hidden transition-all duration-500 hover:bg-neutral-950/45 hover:-translate-y-1.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.02),0_20px_40px_rgba(0,0,0,0.5)] hover:border-purple-500/30 hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_25px_50px_rgba(0,0,0,0.7),0_0_25px_rgba(168,85,247,0.06)] backdrop-blur-md">
+            <div className="absolute top-0 left-0 w-32 h-32 rounded-full bg-purple-500/5 blur-[40px] pointer-events-none group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative w-12 h-12 rounded-2xl bg-purple-950/40 border border-purple-400/15 flex items-center justify-center text-purple-400 group-hover:scale-110 group-hover:border-purple-400/30 transition-all duration-500">
+              <MessageSquareCode className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-bold text-white uppercase">Smart Order Voice IA</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">
-              ¿Demasiado ocupado bailando? Presiona el botón de micrófono y dile a nuestro bot &quot;Quiero 3 botellas de Green Lemon&quot; para agregarlas instantáneamente.
-            </p>
+            <div className="space-y-2 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest font-sans group-hover:text-purple-400 transition-colors">Asistente IA de Voz</h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Selecciona tu sabor y cantidad por voz. Di "Quiero dos Green Lemon" y nuestro bot lo agrega al carrito en segundos.
+              </p>
+            </div>
           </div>
 
-          <div className="group rounded-2xl bg-neutral-950/40 border border-neutral-900 p-6 space-y-4 hover:border-cyan-500/20 transition-all">
-            <div className="w-12 h-12 rounded-xl bg-cyan-950/40 border border-cyan-400/20 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
-              <Truck className="h-6 w-6" />
+          {/* Card 3 - Logística Express (Amber Glow) */}
+          <div className="group relative rounded-3xl bg-neutral-950/20 border border-white/[0.04] p-8 space-y-6 overflow-hidden transition-all duration-500 hover:bg-neutral-950/45 hover:-translate-y-1.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.02),0_20px_40px_rgba(0,0,0,0.5)] hover:border-amber-500/30 hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_25px_50px_rgba(0,0,0,0.7),0_0_25px_rgba(245,158,11,0.06)] backdrop-blur-md">
+            <div className="absolute top-0 left-0 w-32 h-32 rounded-full bg-amber-500/5 blur-[40px] pointer-events-none group-hover:scale-150 transition-transform duration-700" />
+            <div className="relative w-12 h-12 rounded-2xl bg-amber-950/40 border border-amber-400/15 flex items-center justify-center text-amber-400 group-hover:scale-110 group-hover:border-amber-400/30 transition-all duration-500">
+              <Truck className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-bold text-white uppercase">Logística Ultra Express</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">
-              Sistema PWA de tracking de motorizados integrado para que sepas en tiempo real cuándo llegará tu Kleiner Feigling a enfriarse.
-            </p>
+            <div className="space-y-2 relative z-10">
+              <h3 className="text-sm font-bold text-white uppercase tracking-widest font-sans group-hover:text-amber-400 transition-colors">Logística Express</h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                Tracking en tiempo real para Lima Metropolitana. Tu pedido llega frío y en condiciones óptimas directamente a tu puerta.
+              </p>
+            </div>
           </div>
 
         </div>
       </section>
 
-      {/* 3. FEATURED PRODUCTS: Dynamic Supabase Query Display */}
+      {/* 3. FEATURED PRODUCTS */}
       {featuredProducts && featuredProducts.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 border-t border-neutral-900/50">
-          <div className="space-y-12">
-            
-            {/* Header */}
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24 border-t border-neutral-900/40">
+          <div className="space-y-14">
+
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div className="space-y-2">
-                <span className="text-xs font-black uppercase text-lime-400 tracking-[0.2em] flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Los Favoritos de la Noche
+                <span className="text-[10px] font-medium uppercase text-amber-400/80 tracking-[0.22em]">
+                  Selección Premium
                 </span>
-                <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white">
-                  Sabores Destacados
+                <h2 className="font-heading text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+                  Expresiones Destacadas
                 </h2>
-                <p className="text-xs sm:text-sm text-neutral-500 max-w-xl">
-                  Nuestra selección de botellas premium más vendidas en Lima. Importados directamente para garantizar el sabor original alemán.
+                <p className="text-sm text-neutral-500 max-w-md leading-relaxed">
+                  Nuestra selección de sabores más apreciados en Lima. Importados directamente para preservar su perfil original.
                 </p>
               </div>
-
-              <Link 
-                href="/productos" 
-                className="inline-flex items-center gap-2 text-xs font-black uppercase text-neutral-400 hover:text-white transition-colors group"
+              <Link
+                href="/productos"
+                className="inline-flex items-center gap-2 text-xs font-medium uppercase text-neutral-500 hover:text-amber-400 transition-colors tracking-wider group"
               >
-                Ver todo el catálogo
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                Ver catálogo completo
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
 
-            {/* Product Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {featuredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
@@ -173,34 +121,51 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* 4. COCTEL CTA BANNER */}
+      {/* 4. COCKTAIL BANNER */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
-        <div className="relative rounded-3xl bg-neutral-950/80 border border-neutral-900 p-8 sm:p-12 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 backdrop-blur-md">
-          {/* Glowing back lights */}
-          <div className="absolute top-1/2 left-0 -translate-y-1/2 w-48 h-48 rounded-full bg-indigo-500/10 filter blur-[40px] pointer-events-none" />
-          
-          <div className="space-y-4 max-w-2xl relative z-10">
-            <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-400/20 font-black text-[9px] uppercase px-3 py-1 tracking-wider">
+        <div className="relative rounded-3xl border border-neutral-900 bg-neutral-950/60 p-8 sm:p-14 overflow-hidden flex flex-col md:flex-row items-center justify-between gap-10 backdrop-blur-md">
+          <div className="absolute top-0 left-0 w-64 h-64 rounded-full bg-amber-500/5 blur-[80px] pointer-events-none" />
+
+          <div className="space-y-4 max-w-xl relative z-10">
+            <span className="text-[10px] font-medium uppercase text-amber-400/70 tracking-[0.22em] flex items-center gap-2">
+              <Leaf className="h-3 w-3" />
               Recetas Exclusivas
-            </Badge>
-            <h3 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight leading-tight">
-              ¿Quieres preparar cócteles espectaculares?
+            </span>
+            <h3 className="font-heading text-2xl sm:text-3xl font-semibold text-white tracking-tight leading-tight">
+              El arte de la coctelería en casa
             </h3>
-            <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed">
-              Cada uno de nuestros sabores (Original, Green Lemon, Coco Biscuit) tiene increíbles combinaciones recomendadas. Revisa la página de detalles de cada botella para aprender a mezclarlos como un bartender profesional.
+            <p className="text-sm text-neutral-400 leading-relaxed">
+              Cada expresión de Kleiner Feigling tiene combinaciones cuidadosamente seleccionadas. Descubre cómo nuestros sabores elevan cualquier preparación.
             </p>
           </div>
 
           <div className="relative z-10 flex-shrink-0">
             <Link
               href="/productos"
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-white px-8 font-black uppercase text-xs tracking-wider text-black hover:bg-neutral-200 transition-all hover:scale-[1.02] shadow-lg cursor-pointer"
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-neutral-700 bg-neutral-900 px-8 text-sm font-semibold tracking-wide text-white hover:border-amber-400/30 hover:bg-neutral-800 transition-all"
             >
               Explorar Recetas
             </Link>
           </div>
         </div>
       </section>
+
+      {/* Floating Voice Assistant Trigger */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Link
+          href="/chat?voice=true"
+          className="group relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500/20 to-purple-500/20 border border-white/10 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(245,158,11,0.2)] hover:shadow-[0_8px_32px_0_rgba(168,85,247,0.3)] transition-all duration-300 hover:scale-110 active:scale-95"
+        >
+          {/* Subtle pulse ring */}
+          <span className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-amber-400 to-purple-500 opacity-25 group-hover:opacity-50 blur-sm animate-pulse duration-1000" />
+          <MessageSquareCode className="relative z-10 h-6 w-6 text-amber-400 group-hover:text-purple-400 transition-colors" />
+          
+          {/* Tooltip */}
+          <span className="absolute right-20 scale-0 group-hover:scale-100 transition-transform origin-right bg-neutral-950/90 border border-neutral-800 text-amber-400 text-[10px] font-black uppercase tracking-widest px-3.5 py-2 rounded-xl whitespace-nowrap shadow-2xl">
+            Asistente de Voz IA 🎙️
+          </span>
+        </Link>
+      </div>
 
     </main>
   );
