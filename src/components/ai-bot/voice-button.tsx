@@ -7,18 +7,6 @@ interface VoiceButtonProps {
   className?: string;
 }
 
-// Chrome en móvil bloquea speechSynthesis.speak() si no viene de un gesto del
-// usuario. Al presionar el micrófono (gesto real), mandamos una utterance vacía
-// y silenciosa para desbloquear el API para las respuestas del bot que llegan
-// de forma asíncrona.
-function primeSpeechSynthesis() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance("");
-  u.volume = 0;
-  u.rate = 10;
-  window.speechSynthesis.speak(u);
-}
-
 export function VoiceButton({
   onTranscriptionComplete,
   className = "",
@@ -26,18 +14,6 @@ export function VoiceButton({
   const { isRecording, isTranscribing, pressProps } = useVoice({
     onTranscriptionComplete,
   });
-
-  const wrappedPressProps = {
-    ...pressProps,
-    onMouseDown: (e: React.MouseEvent) => {
-      primeSpeechSynthesis();
-      pressProps.onMouseDown(e);
-    },
-    onTouchStart: (e: React.TouchEvent) => {
-      primeSpeechSynthesis();
-      pressProps.onTouchStart(e);
-    },
-  };
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
@@ -47,7 +23,7 @@ export function VoiceButton({
           <div className="absolute h-18 w-18 rounded-full bg-rose-500/20 animate-ping duration-1000" />
           <div className="absolute h-22 w-22 rounded-full bg-rose-500/10 animate-pulse duration-700" />
           <div className="absolute h-26 w-26 rounded-full bg-rose-500/5 animate-ping duration-1500" />
-          
+
           {/* Wave visual bars container */}
           <div className="absolute -top-6 flex gap-1 items-center h-4">
             <span className="w-1 bg-rose-400 rounded-full animate-bounce [animation-duration:300ms]" />
@@ -65,7 +41,7 @@ export function VoiceButton({
       {/* ─── Main Interactive Glowing Button ─── */}
       <Button
         size="icon"
-        {...wrappedPressProps}
+        {...pressProps}
         className={`relative z-10 h-14 w-14 rounded-full border-none shadow-xl cursor-pointer select-none transition-all duration-300 hover:scale-105 active:scale-95 ${
           isRecording
             ? "bg-rose-500 text-white shadow-rose-500/30"

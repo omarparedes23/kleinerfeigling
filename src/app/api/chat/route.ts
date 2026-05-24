@@ -149,8 +149,8 @@ export async function POST(request: Request) {
     const writer = writable.getWriter();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pipeModel = async (model: any) => {
-      const response = streamText({ model, ...sharedConfig }).toDataStreamResponse();
+    const pipeModel = async (model: any, maxRetries = 2) => {
+      const response = streamText({ model, ...sharedConfig, maxRetries }).toDataStreamResponse();
       const reader = response.body!.getReader();
       while (true) {
         const { done, value } = await reader.read();
@@ -161,7 +161,9 @@ export async function POST(request: Request) {
 
     (async () => {
       try {
-        await pipeModel(googleAI("gemini-2.5-flash"));
+        // maxRetries: 0 → falla en ~200ms en vez de ~14s con los delays de reintentos.
+        // Si Gemini tiene quota agotada, el TransformStream pasa a Groq casi de inmediato.
+        await pipeModel(googleAI("gemini-2.5-flash"), 0);
       } catch (err) {
         const msg = String((err as any)?.message ?? err);
         const isQuota =

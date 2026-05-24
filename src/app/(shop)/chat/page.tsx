@@ -86,28 +86,23 @@ export default function ChatPage() {
     const clean = cleanTextForSpeech(text);
     if (!clean) return;
 
-    const utterance = new SpeechSynthesisUtterance(clean);
     const voices = window.speechSynthesis.getVoices();
 
-    // Select the best Spanish voice (priority order: es-PE, es-MX, generic es)
-    let selectedVoice = voices.find(v => v.lang === "es-PE") ||
-                        voices.find(v => v.lang === "es-MX") ||
-                        voices.find(v => v.lang.startsWith("es-")) ||
-                        voices.find(v => v.lang === "es") ||
-                        voices[0];
+    // Prioridad: voz premium española → es-PE → es-MX → cualquier es-*
+    // Sin fallback a voices[0]: si no hay voz española instalada, no hablar
+    // (evita que hablen voces alemanas u otras lenguas).
+    const selectedVoice =
+      voices.find(v => v.lang.startsWith("es") && (v.name.includes("Google") || v.name.includes("Natural"))) ||
+      voices.find(v => v.lang === "es-PE") ||
+      voices.find(v => v.lang === "es-MX") ||
+      voices.find(v => v.lang.startsWith("es-")) ||
+      voices.find(v => v.lang === "es");
 
-    // Prefer high-quality premium voices if available (e.g. Google or Natural voices)
-    const premiumVoice = voices.find(v => v.lang.startsWith("es") && (v.name.includes("Google") || v.name.includes("Natural")));
-    if (premiumVoice) {
-      selectedVoice = premiumVoice;
-    }
+    if (!selectedVoice) return; // No hay voz española en el dispositivo — omitir
 
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      utterance.lang = selectedVoice.lang;
-    } else {
-      utterance.lang = "es-ES";
-    }
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.voice = selectedVoice;
+    utterance.lang = selectedVoice.lang;
 
     // Set conversational pitch and speed (slightly friendly and cheerful)
     utterance.rate = 1.05;
