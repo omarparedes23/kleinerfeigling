@@ -17,8 +17,8 @@ const googleAI = createGoogleGenerativeAI({
 
 export const maxDuration = 60;
 
-// Fallback automático: cuando Gemini agota su cuota diaria, todas las
-// solicitudes restantes del proceso usan Groq hasta reiniciar el servidor.
+// Persiste en el proceso Node. Cuando Gemini agota cuota, todas las
+// solicitudes del proceso usan Groq. Se resetea al reiniciar el servidor.
 let geminiQuotaExhausted = false;
 
 const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner Feigling Perú. 🥂
@@ -80,9 +80,6 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 11. La tarjeta de confirmación incluirá el botón para pagar por Culqi (tarjeta, Yape o Plin).`;
 
 export async function POST(request: Request) {
-  // 1. Obtener sesión y usuario de forma segura al inicio del handler
-  // getUser() contacta el servidor de Supabase Auth para validar el JWT (más seguro que getSession solo)
-  // getSession() se usa únicamente para extraer el access_token necesario para el cliente vanilla
   let user = null;
   let accessToken: string | undefined;
   try {
@@ -98,62 +95,114 @@ export async function POST(request: Request) {
     console.error("🔴 [AUTH ERROR]:", err.message);
   }
 
-  // 2. Cliente Supabase sin cookies — seguro para uso asíncrono dentro del stream
-  // Autenticado vía Authorization header en lugar de cookies de Next.js
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    accessToken ? {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    } : undefined
+    accessToken
+      ? { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
+      : undefined,
   );
 
   const tools = getTools(supabase, user);
 
-  const { messages } = (await request.json()) as {
-    messages: CoreMessage[];
-  };
+  const { messages } = (await request.json()) as { messages: CoreMessage[] };
 
   const lastUser = messages.filter((m) => m.role === "user").at(-1);
   if (lastUser) {
-    const text = typeof lastUser.content === "string"
-      ? lastUser.content
-      : JSON.stringify(lastUser.content);
+    const text =
+      typeof lastUser.content === "string"
+        ? lastUser.content
+        : JSON.stringify(lastUser.content);
     console.log(`👤 [USER] "${text}"`);
   }
 
   const useGemini =
     !!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !geminiQuotaExhausted;
 
-  const model = useGemini
-    ? googleAI("gemini-2.5-flash")
-    : groq("llama-3.3-70b-versatile");
-
   console.log(
     `🤖 [MODEL] ${useGemini ? "Gemini 2.5 Flash" : "Groq Llama 3.3 70b"}${geminiQuotaExhausted ? " (fallback — Gemini quota agotada)" : ""}`,
   );
 
-  const result = streamText({
-    model,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onFinish = ({ text, toolCalls }: any) => {
+    if (text) console.log(`🤖 [BOT]  "${text}"`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    toolCalls?.forEach((t: any) =>
+      console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args)})`),
+    );
+  };
+
+  const sharedConfig = {
     system: SYSTEM_PROMPT,
     messages,
     tools,
     maxSteps: 10,
-    onFinish: ({ text, toolCalls }) => {
-      if (text) console.log(`🤖 [BOT]  "${text}"`);
-      toolCalls?.forEach((t) =>
-        console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args)})`),
-      );
-    },
-    onError: ({ error }) => {
-      console.error("🔴 [STREAM ERROR]:", error);
-      const msg = String((error as any)?.message ?? error);
-      if (msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-        geminiQuotaExhausted = true;
-        console.warn("⚠️ Gemini quota diaria agotada — próximas solicitudes usarán Groq automáticamente.");
-      }
-    },
-  });
+    onFinish,
+  } as const;
 
+  // ── Gemini con fallback automático a Groq vía TransformStream ──────────────
+  // Por qué TransformStream y no onError: onError se llama DESPUÉS de que la
+  // respuesta ya falló. El TransformStream intercepta el error en el primer
+  // read() — antes de que llegue al cliente — y reinicia limpiamente con Groq.
+  if (useGemini) {
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+    const writer = writable.getWriter();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pipeModel = async (model: any) => {
+      const response = streamText({ model, ...sharedConfig }).toDataStreamResponse();
+      const reader = response.body!.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        await writer.write(value);
+      }
+    };
+
+    (async () => {
+      try {
+        await pipeModel(googleAI("gemini-2.5-flash"));
+      } catch (err) {
+        const msg = String((err as any)?.message ?? err);
+        const isQuota =
+          msg.includes("RetryError") ||
+          msg.includes("quota") ||
+          msg.includes("RESOURCE_EXHAUSTED");
+
+        if (isQuota) {
+          geminiQuotaExhausted = true;
+          console.warn(
+            "⚠️ Gemini quota agotada — usando Groq para esta solicitud y las siguientes.",
+          );
+          try {
+            await pipeModel(groq("llama-3.3-70b-versatile"));
+          } catch (fallbackErr) {
+            console.error("🔴 [GROQ FALLBACK ERROR]:", fallbackErr);
+            writer.abort(fallbackErr as Error);
+            return;
+          }
+        } else {
+          console.error("🔴 [GEMINI ERROR]:", err);
+          writer.abort(err as Error);
+          return;
+        }
+      }
+      writer.close();
+    })();
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Vercel-AI-Data-Stream": "v1",
+        "Cache-Control": "no-cache",
+      },
+    });
+  }
+
+  // ── Groq directo (sin Gemini o con quota agotada ya conocida) ──────────────
+  const result = streamText({
+    model: groq("llama-3.3-70b-versatile"),
+    ...sharedConfig,
+  });
   return result.toDataStreamResponse();
 }
