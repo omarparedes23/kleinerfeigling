@@ -21,7 +21,10 @@ const PROMPT_CHIPS = [
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("kleiner-voice-enabled") === "true";
+  });
   const lastReadMessageIdRef = useRef<string | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   
@@ -87,13 +90,17 @@ export default function ChatPage() {
   // Speaks text via backend TTS (/api/tts → OpenAI nova voice)
   // forceEnabled bypasses the isVoiceEnabled check (used when toggling on)
   const speakText = async (text: string, forceEnabled = false) => {
-    if (!isVoiceEnabled && !forceEnabled) return;
+    if (!isVoiceEnabled && !forceEnabled) {
+      console.log("[TTS] skipped — voz desactivada");
+      return;
+    }
 
     cancelCurrentAudio();
 
     const clean = cleanTextForSpeech(text);
     if (!clean) return;
 
+    console.log(`[TTS] fetch /api/tts — ${clean.length} chars`);
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -101,16 +108,26 @@ export default function ChatPage() {
         body: JSON.stringify({ text: clean }),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        const err = await res.text().catch(() => "");
+        console.error(`[TTS] error ${res.status}:`, err);
+        toast.error(`🔴 Voz: error ${res.status}. Revisa la API key de ElevenLabs en Vercel.`, { duration: 5000 });
+        return;
+      }
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       currentAudioRef.current = audio;
       audio.onended = () => URL.revokeObjectURL(url);
-      audio.play().catch(() => URL.revokeObjectURL(url));
-    } catch {
-      // silent fail — voice is non-critical
+      audio.play().catch((e) => {
+        console.error("[TTS] audio.play() falló:", e);
+        toast.error("🔴 El navegador bloqueó el audio. Interactúa con la página primero.", { duration: 5000 });
+        URL.revokeObjectURL(url);
+      });
+    } catch (e: any) {
+      console.error("[TTS] excepción:", e);
+      toast.error(`🔴 TTS falló: ${e?.message ?? "error desconocido"}`, { duration: 5000 });
     }
   };
 
@@ -147,6 +164,7 @@ export default function ChatPage() {
   const toggleVoice = () => {
     const nextState = !isVoiceEnabled;
     setIsVoiceEnabled(nextState);
+    localStorage.setItem("kleiner-voice-enabled", String(nextState));
 
     if (!nextState) {
       cancelCurrentAudio();

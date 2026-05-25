@@ -28,6 +28,7 @@ export function useVoice({ onTranscriptionComplete }: UseVoiceOptions = {}) {
   const startRecording = useCallback(async () => {
     if (!recorderRef.current) return;
 
+    console.log("[MIC] Botón presionado — solicitando micrófono...");
     setError(null);
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
@@ -37,6 +38,7 @@ export function useVoice({ onTranscriptionComplete }: UseVoiceOptions = {}) {
     const promise = (async () => {
       await recorderRef.current!.start();
       setIsRecording(true);
+      console.log("[MIC] Grabando ✅");
       toast.info("Grabando audio... Habla ahora 🎙️");
     })();
 
