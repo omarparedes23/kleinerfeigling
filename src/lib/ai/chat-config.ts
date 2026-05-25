@@ -298,21 +298,29 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       const sessionData = { items: currentItems };
 
       if (cart) {
-        // Actualizar carrito existente
-        await supabase
+        const { error: updateError } = await supabase
           .from("kleiner_cart_sessions")
           .update({
             session_data: sessionData as unknown as Json,
             actualizado_en: new Date().toISOString(),
           })
           .eq("id", cart.id);
+
+        if (updateError) {
+          console.error("[agregar_al_carrito] Error actualizando carrito:", updateError.message);
+          return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
+        }
       } else {
-        // Crear nuevo carrito
-        await supabase.from("kleiner_cart_sessions").insert({
+        const { error: insertError } = await supabase.from("kleiner_cart_sessions").insert({
           usuario_id: user.id,
           session_data: sessionData as unknown as Json,
           activo: true,
         });
+
+        if (insertError) {
+          console.error("[agregar_al_carrito] Error creando carrito:", insertError.message);
+          return { ok: false, total_items: 0, mensaje: "Error al crear el carrito. Inténtalo de nuevo." };
+        }
       }
 
       return {
