@@ -23,6 +23,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const lastReadMessageIdRef = useRef<string | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   
   // Vercel AI SDK hook connected to our /api/chat route
   const {
@@ -48,7 +49,7 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Clean Markdown and Emojis from text before feeding it to Web Speech API
+  // Strips markdown, emojis, and normalizes currency before sending to TTS
   const cleanTextForSpeech = (text: string): string => {
     if (!text) return "";
     
@@ -74,61 +75,48 @@ export default function ChatPage() {
     return clean;
   };
 
-  // Speaks the given text using the best available Spanish voice
-  const speakText = (text: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+  // Cancels any currently playing TTS audio
+  const cancelCurrentAudio = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.src = "";
+      currentAudioRef.current = null;
+    }
+  };
 
-    // Stop any current speaking
-    window.speechSynthesis.cancel();
+  // Speaks text via backend TTS (/api/tts → OpenAI nova voice)
+  // forceEnabled bypasses the isVoiceEnabled check (used when toggling on)
+  const speakText = async (text: string, forceEnabled = false) => {
+    if (!isVoiceEnabled && !forceEnabled) return;
 
-    if (!isVoiceEnabled) return;
+    cancelCurrentAudio();
 
     const clean = cleanTextForSpeech(text);
     if (!clean) return;
 
-    const voices = window.speechSynthesis.getVoices();
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean }),
+      });
 
-    // Prioridad: voz premium española → es-PE → es-MX → cualquier es-*
-    // Sin fallback a voices[0]: si no hay voz española instalada, no hablar
-    // (evita que hablen voces alemanas u otras lenguas).
-    const selectedVoice =
-      voices.find(v => v.lang.startsWith("es") && (v.name.includes("Google") || v.name.includes("Natural"))) ||
-      voices.find(v => v.lang === "es-PE") ||
-      voices.find(v => v.lang === "es-MX") ||
-      voices.find(v => v.lang.startsWith("es-")) ||
-      voices.find(v => v.lang === "es");
+      if (!res.ok) return;
 
-    if (!selectedVoice) return; // No hay voz española en el dispositivo — omitir
-
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.voice = selectedVoice;
-    utterance.lang = selectedVoice.lang;
-
-    // Set conversational pitch and speed (slightly friendly and cheerful)
-    utterance.rate = 1.05;
-    utterance.pitch = 1.02;
-    utterance.volume = 1.0;
-
-    window.speechSynthesis.speak(utterance);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioRef.current = audio;
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.play().catch(() => URL.revokeObjectURL(url));
+    } catch {
+      // silent fail — voice is non-critical
+    }
   };
 
-  // Pre-load voices on component mount
+  // Cancel audio on unmount
   useEffect(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.getVoices();
-      
-      if (window.speechSynthesis.onvoiceschanged !== undefined) {
-        window.speechSynthesis.onvoiceschanged = () => {
-          window.speechSynthesis.getVoices();
-        };
-      }
-    }
-
-    return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
+    return () => cancelCurrentAudio();
   }, []);
 
   // Check search params to auto-enable voice mode
@@ -159,30 +147,18 @@ export default function ChatPage() {
   const toggleVoice = () => {
     const nextState = !isVoiceEnabled;
     setIsVoiceEnabled(nextState);
-    
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+
+    if (!nextState) {
+      cancelCurrentAudio();
+      toast.info("🔇 Lectura de voz desactivada.");
+      return;
     }
 
-    if (nextState) {
-      toast.success("🔊 Lectura de voz activada.");
-      // Read the last bot message out loud as a preview
-      const lastMessage = messages.filter(m => m.role === "assistant").at(-1);
-      if (lastMessage) {
-        setTimeout(() => {
-          const clean = cleanTextForSpeech(lastMessage.content);
-          if (clean && window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance(clean);
-            const voices = window.speechSynthesis.getVoices();
-            const voice = voices.find(v => v.lang.startsWith("es")) || voices[0];
-            if (voice) utterance.voice = voice;
-            utterance.rate = 1.05;
-            window.speechSynthesis.speak(utterance);
-          }
-        }, 100);
-      }
-    } else {
-      toast.info("🔇 Lectura de voz desactivada.");
+    toast.success("🔊 Lectura de voz activada.");
+    // Preview last bot message using backend TTS (forceEnabled=true — state hasn't updated yet)
+    const lastMessage = messages.filter(m => m.role === "assistant").at(-1);
+    if (lastMessage) {
+      speakText(lastMessage.content, true);
     }
   };
 
