@@ -179,7 +179,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
     execute: async ({ product_id, cantidad }) => {
       const { data, error } = await supabase
         .from("kleiner_products")
-        .select("id, nombre, stock, precio")
+        .select("id, nombre, stock, precio, precio_oferta, imagen_url, sabor")
         .eq("id", product_id)
         .single();
 
@@ -191,6 +191,9 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         disponible: data.stock >= cantidad,
         stock_actual: data.stock,
         precio: data.precio,
+        precio_oferta: data.precio_oferta,
+        imagen_url: data.imagen_url,
+        sabor: data.sabor,
         nombre: data.nombre,
         mensaje:
           data.stock >= cantidad

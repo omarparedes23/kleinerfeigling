@@ -253,34 +253,45 @@ function BuscarProductoCard({ result, add }: { result: any; add: any }) {
 // ─── TOOL: verificar_stock ─────────────────────────────────────
 function VerificarStockCard({ result, args }: { result: any; args: any }) {
   const isAvailable = result.disponible;
+  const theme = getFlavorTheme(result.sabor);
+  const price = result.precio_oferta && Number(result.precio_oferta) > 0
+    ? Number(result.precio_oferta)
+    : Number(result.precio || 0);
 
   return (
-    <Card
-      className={`border backdrop-blur-md transition-all duration-300 ${
-        isAvailable
-          ? "border-amber-500/20 bg-amber-950/10 shadow-[0_0_10px_rgba(163,230,53,0.05)]"
-          : "border-rose-500/20 bg-rose-950/10 shadow-[0_0_10px_rgba(244,63,94,0.05)]"
-      }`}
-    >
-      <CardContent className="p-3.5 flex items-start gap-3">
-        <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-            isAvailable ? "bg-amber-500/15 text-amber-400" : "bg-rose-500/15 text-rose-400"
-          }`}
-        >
-          {isAvailable ? <CheckCircle className="h-4.5 w-4.5" /> : <AlertTriangle className="h-4.5 w-4.5" />}
-        </div>
-        <div className="flex-1 space-y-0.5">
-          <h4 className="font-bold text-xs text-neutral-200">
-            Verificación de Stock: <span className="text-neutral-400">{result.nombre || `ID #${args.product_id}`}</span>
-          </h4>
-          <p className="text-xs text-neutral-300 leading-snug">{result.mensaje}</p>
-          {isAvailable && (
-            <p className="text-[10px] text-neutral-500 mt-1">
-              Precio unitario: S/ {Number(result.precio || 0).toFixed(2)}
-            </p>
+    <Card className={`overflow-hidden border transition-all duration-300 ${theme.bg} ${theme.border} ${theme.glow}`}>
+      {result.imagen_url && (
+        <div className="relative aspect-video w-full overflow-hidden bg-neutral-900/50">
+          <img
+            src={result.imagen_url}
+            alt={result.nombre}
+            className="h-full w-full object-contain p-2"
+          />
+          {result.sabor && (
+            <Badge className={`absolute bottom-2 left-2 text-[9px] border font-bold uppercase ${theme.badge}`}>
+              {result.sabor}
+            </Badge>
           )}
+          <div
+            className={`absolute top-2 right-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${
+              isAvailable ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+            }`}
+          >
+            {isAvailable ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+            {isAvailable ? "Disponible" : "Sin stock"}
+          </div>
         </div>
+      )}
+      <CardContent className="p-3.5 flex items-center justify-between">
+        <div>
+          <h4 className="font-bold text-sm text-neutral-100 line-clamp-1 font-sans">
+            {result.nombre || `Producto #${args.product_id}`}
+          </h4>
+          <span className="text-sm font-black text-amber-400">S/ {price.toFixed(2)}</span>
+        </div>
+        {!isAvailable && (
+          <span className="text-[10px] text-rose-400">{result.mensaje}</span>
+        )}
       </CardContent>
     </Card>
   );
