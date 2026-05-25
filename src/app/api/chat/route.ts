@@ -80,6 +80,7 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 11. La tarjeta de confirmación incluirá el botón para pagar por Culqi (tarjeta, Yape o Plin).`;
 
 export async function POST(request: Request) {
+  const reqStart = Date.now();
   let user = null;
   let accessToken: string | undefined;
   try {
@@ -107,28 +108,33 @@ export async function POST(request: Request) {
 
   const { messages } = (await request.json()) as { messages: CoreMessage[] };
 
+  console.log(`📨 [CHAT] Mensajes en contexto: ${messages.length}`);
+
   const lastUser = messages.filter((m) => m.role === "user").at(-1);
   if (lastUser) {
     const text =
       typeof lastUser.content === "string"
         ? lastUser.content
         : JSON.stringify(lastUser.content);
-    console.log(`👤 [USER] "${text}"`);
+    console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
   const useGemini =
     !!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !geminiQuotaExhausted;
 
   console.log(
-    `🤖 [MODEL] ${useGemini ? "Gemini 2.5 Flash" : "Groq Llama 3.3 70b"}${geminiQuotaExhausted ? " (fallback — Gemini quota agotada)" : ""}`,
+    `🤖 [MODEL] ${useGemini ? "Gemini 2.5 Flash" : "Groq Llama 3.3 70b"}${geminiQuotaExhausted ? " (quota agotada — directo a Groq)" : ""}`,
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onFinish = ({ text, toolCalls }: any) => {
-    if (text) console.log(`🤖 [BOT]  "${text}"`);
+  const onFinish = ({ text, toolCalls, finishReason, usage }: any) => {
+    const elapsed = Date.now() - reqStart;
+    if (text) console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
+    if (usage) console.log(`📊 [TOKENS] prompt=${usage.promptTokens} completion=${usage.completionTokens} total=${usage.totalTokens}`);
+    if (finishReason && finishReason !== "stop") console.log(`⚠️ [FINISH_REASON] ${finishReason}`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     toolCalls?.forEach((t: any) =>
-      console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args)})`),
+      console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args).slice(0, 200)})`),
     );
   };
 
@@ -141,9 +147,6 @@ export async function POST(request: Request) {
   } as const;
 
   // ── Gemini con fallback automático a Groq vía TransformStream ──────────────
-  // Por qué TransformStream y no onError: onError se llama DESPUÉS de que la
-  // respuesta ya falló. El TransformStream intercepta el error en el primer
-  // read() — antes de que llegue al cliente — y reinicia limpiamente con Groq.
   if (useGemini) {
     const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
     const writer = writable.getWriter();
@@ -161,30 +164,36 @@ export async function POST(request: Request) {
 
     (async () => {
       try {
-        // maxRetries: 0 → falla en ~200ms en vez de ~14s con los delays de reintentos.
-        // Si Gemini tiene quota agotada, el TransformStream pasa a Groq casi de inmediato.
+        console.log("🟣 [GEMINI] Iniciando stream...");
         await pipeModel(googleAI("gemini-2.5-flash"), 0);
+        console.log(`✅ [GEMINI] Stream completado en ${Date.now() - reqStart}ms`);
       } catch (err) {
         const msg = String((err as any)?.message ?? err);
+        const status = (err as any)?.status ?? (err as any)?.statusCode ?? "?";
+        console.error(`🔴 [GEMINI ERROR] status=${status} msg="${msg.slice(0, 300)}"`);
+
         const isQuota =
           msg.includes("RetryError") ||
           msg.includes("quota") ||
-          msg.includes("RESOURCE_EXHAUSTED");
+          msg.includes("RESOURCE_EXHAUSTED") ||
+          msg.includes("429") ||
+          status === 429;
 
         if (isQuota) {
           geminiQuotaExhausted = true;
-          console.warn(
-            "⚠️ Gemini quota agotada — usando Groq para esta solicitud y las siguientes.",
-          );
+          console.warn("⚠️ [GEMINI] Quota agotada — fallback a Groq.");
           try {
+            console.log("🟡 [GROQ] Iniciando stream fallback...");
             await pipeModel(groq("llama-3.3-70b-versatile"));
+            console.log(`✅ [GROQ] Stream completado en ${Date.now() - reqStart}ms`);
           } catch (fallbackErr) {
-            console.error("🔴 [GROQ FALLBACK ERROR]:", fallbackErr);
+            const fMsg = String((fallbackErr as any)?.message ?? fallbackErr);
+            console.error(`🔴 [GROQ FALLBACK ERROR] "${fMsg.slice(0, 300)}"`);
             writer.abort(fallbackErr as Error);
             return;
           }
         } else {
-          console.error("🔴 [GEMINI ERROR]:", err);
+          console.error("🔴 [GEMINI] Error no-quota — abortando stream.");
           writer.abort(err as Error);
           return;
         }
@@ -201,7 +210,8 @@ export async function POST(request: Request) {
     });
   }
 
-  // ── Groq directo (sin Gemini o con quota agotada ya conocida) ──────────────
+  // ── Groq directo (quota agotada ya conocida desde request anterior) ────────
+  console.log("🟡 [GROQ] Stream directo (sin Gemini)...");
   const result = streamText({
     model: groq("llama-3.3-70b-versatile"),
     ...sharedConfig,

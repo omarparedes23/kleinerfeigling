@@ -7,9 +7,11 @@ export const maxDuration = 30;
 const VOICE_ID = "pFZP5JQG7iQjIQuC4Bku"; // Lily — multilingual, funciona bien en español
 
 export async function POST(request: NextRequest) {
+  const start = Date.now();
   try {
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
+      console.error("🔴 [TTS] ELEVENLABS_API_KEY no configurado en las variables de entorno.");
       return NextResponse.json({ error: "ELEVENLABS_API_KEY no configurado." }, { status: 400 });
     }
 
@@ -18,6 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Texto requerido." }, { status: 400 });
     }
 
+    const truncated = text.slice(0, 500);
+    console.log(`🔊 [TTS] Solicitando voz — ${truncated.length} chars — "${truncated.slice(0, 80)}..."`);
+
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
       method: "POST",
       headers: {
@@ -25,7 +30,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text: text.slice(0, 500),
+        text: truncated,
         model_id: "eleven_flash_v2_5",
         voice_settings: {
           stability: 0.5,
@@ -34,14 +39,16 @@ export async function POST(request: NextRequest) {
       }),
     });
 
+    console.log(`🔊 [TTS] ElevenLabs status: ${res.status} — ${Date.now() - start}ms`);
+
     if (!res.ok) {
-      const err = await res.text();
-      console.error("[TTS_ELEVENLABS_ERROR]", res.status, err);
+      const errBody = await res.text();
+      console.error(`🔴 [TTS ERROR] status=${res.status} body="${errBody.slice(0, 500)}"`);
       return NextResponse.json({ error: "Error al generar audio." }, { status: 500 });
     }
 
     const buffer = Buffer.from(await res.arrayBuffer());
-    console.log(`🔊 [TTS ElevenLabs] ${buffer.length} bytes — "${text.slice(0, 60)}..."`);
+    console.log(`✅ [TTS] ${buffer.length} bytes — total ${Date.now() - start}ms`);
 
     return new NextResponse(buffer, {
       headers: {
@@ -50,7 +57,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("[TTS_ERROR]", error);
+    console.error(`🔴 [TTS EXCEPTION] ${Date.now() - start}ms —`, error);
     return NextResponse.json({ error: "Error al generar audio." }, { status: 500 });
   }
 }
