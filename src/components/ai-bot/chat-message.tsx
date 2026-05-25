@@ -173,8 +173,14 @@ function ToolCard({ tool, add }: ToolCardProps) {
 }
 
 // ─── TOOL: buscar_producto ─────────────────────────────────────
-function BuscarProductoCard({ result, add }: { result: any[]; add: any }) {
-  if (!Array.isArray(result) || result.length === 0) {
+function BuscarProductoCard({ result, add }: { result: any; add: any }) {
+  const productos: any[] = Array.isArray(result)
+    ? result
+    : Array.isArray(result?.productos)
+      ? result.productos
+      : [];
+
+  if (productos.length === 0) {
     return (
       <Card className="border-red-500/20 bg-red-950/10 backdrop-blur-md">
         <CardContent className="flex items-center gap-2 p-3 text-xs text-red-400">
@@ -187,11 +193,11 @@ function BuscarProductoCard({ result, add }: { result: any[]; add: any }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {result.map((product: any) => {
+      {productos.map((product: any) => {
         const theme = getFlavorTheme(product.sabor);
-        const hasOffer = product.precio_oferta && Number(product.precio_oferta) > 0;
-        const currentPrice = hasOffer ? Number(product.precio_oferta) : Number(product.precio);
-        const originalPrice = Number(product.precio);
+        const price = product.precio_oferta && Number(product.precio_oferta) > 0
+          ? Number(product.precio_oferta)
+          : Number(product.precio);
 
         return (
           <Card
@@ -210,56 +216,32 @@ function BuscarProductoCard({ result, add }: { result: any[]; add: any }) {
                   <ShoppingBag className="h-10 w-10" />
                 </div>
               )}
-              {product.stock <= 5 && product.stock > 0 && (
-                <Badge className="absolute top-2 right-2 bg-rose-500/90 text-white border-none text-[9px] font-bold animate-pulse">
-                  Últimos {product.stock}!
-                </Badge>
-              )}
               {product.sabor && (
                 <Badge className={`absolute bottom-2 left-2 text-[9px] border font-bold uppercase ${theme.badge}`}>
                   {product.sabor}
                 </Badge>
               )}
             </div>
-            <CardContent className="p-3.5 flex flex-col justify-between min-h-[110px]">
+            <CardContent className="p-3.5 flex items-center justify-between">
               <div>
                 <h4 className="font-bold text-sm text-neutral-100 line-clamp-1 font-sans">
                   {product.nombre}
                 </h4>
-                <p className="text-[10px] text-neutral-400 mt-0.5">
-                  Volumen: {product.volumen_ml ?? 250}ml | Stock: {product.stock}
-                </p>
+                <span className="text-sm font-black text-amber-400">
+                  S/ {price.toFixed(2)}
+                </span>
               </div>
 
-              <div className="mt-3 flex items-center justify-between">
-                <div>
-                  {hasOffer ? (
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-neutral-500 line-through">
-                        S/ {originalPrice.toFixed(2)}
-                      </span>
-                      <span className="text-sm font-black text-amber-400">
-                        S/ {currentPrice.toFixed(2)}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-black text-white">
-                      S/ {originalPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    add(product, 1, product.volumen_ml);
-                    toast.success(`Añadido: ${product.nombre} 🥂`);
-                  }}
-                  className="h-8 rounded-lg bg-amber-400 text-neutral-950 font-bold text-xs hover:bg-amber-300 border-none transition-all shadow-[0_0_10px_rgba(163,230,53,0.2)] cursor-pointer"
-                >
-                  Agregar
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  add(product, 1, product.volumen_ml);
+                  toast.success(`Añadido: ${product.nombre} 🥂`);
+                }}
+                className="h-8 rounded-lg bg-amber-400 text-neutral-950 font-bold text-xs hover:bg-amber-300 border-none transition-all shadow-[0_0_10px_rgba(163,230,53,0.2)] cursor-pointer"
+              >
+                Agregar
+              </Button>
             </CardContent>
           </Card>
         );
