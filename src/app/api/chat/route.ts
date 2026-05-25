@@ -97,9 +97,17 @@ export async function POST(request: Request) {
   );
 
   const tools = getTools(supabase, user);
-  const { messages } = (await request.json()) as { messages: CoreMessage[] };
+  const { messages: allMessages } = (await request.json()) as { messages: CoreMessage[] };
 
-  console.log(`📨 [CHAT] Mensajes en contexto: ${messages.length}`);
+  // Groq free tier: 6,000 TPM. System prompt ~1,500 tokens → max 6 messages de historial.
+  // Siempre conservar el primer mensaje (contexto inicial del usuario si existe).
+  const MAX_HISTORY = 6;
+  const messages: CoreMessage[] =
+    allMessages.length > MAX_HISTORY
+      ? allMessages.slice(-MAX_HISTORY)
+      : allMessages;
+
+  console.log(`📨 [CHAT] Mensajes: ${allMessages.length} total → ${messages.length} enviados a Groq`);
 
   const lastUser = messages.filter((m) => m.role === "user").at(-1);
   if (lastUser) {
@@ -120,7 +128,11 @@ export async function POST(request: Request) {
     maxSteps: 10,
     onFinish: ({ text, toolCalls, finishReason, usage }: any) => {
       const elapsed = Date.now() - reqStart;
-      if (text) console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
+      if (text) {
+        console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
+      } else {
+        console.log(`⚠️ [BOT] (${elapsed}ms) Respuesta vacía — finishReason: ${finishReason} — posible rate limit de Groq`);
+      }
       if (usage) console.log(`📊 [TOKENS] prompt=${usage.promptTokens} completion=${usage.completionTokens}`);
       if (finishReason && finishReason !== "stop") console.log(`⚠️ [FINISH] ${finishReason}`);
       toolCalls?.forEach((t: any) =>
