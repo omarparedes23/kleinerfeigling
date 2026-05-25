@@ -104,15 +104,17 @@ export async function POST(request: Request) {
   const tools = getTools(supabase, user);
   const { messages: allMessages } = (await request.json()) as { messages: CoreMessage[] };
 
-  // Groq free tier: 6,000 TPM. System prompt ~1,500 tokens → max 6 messages de historial.
-  // Siempre conservar el primer mensaje (contexto inicial del usuario si existe).
-  const MAX_HISTORY = 6;
+  const hasGemini = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+  // Gemini: 1M de contexto — enviamos todo el historial sin recortar.
+  // Groq free tier: ~6K TPM — limitamos a los últimos 6 mensajes para no superar la cuota.
+  const MAX_HISTORY_GROQ = 6;
   const messages: CoreMessage[] =
-    allMessages.length > MAX_HISTORY
-      ? allMessages.slice(-MAX_HISTORY)
+    !hasGemini && allMessages.length > MAX_HISTORY_GROQ
+      ? allMessages.slice(-MAX_HISTORY_GROQ)
       : allMessages;
 
-  console.log(`📨 [CHAT] Mensajes: ${allMessages.length} total → ${messages.length} enviados a Groq`);
+  console.log(`📨 [CHAT] Mensajes: ${allMessages.length} total → ${messages.length} enviados al modelo`);
 
   const lastUser = messages.filter((m) => m.role === "user").at(-1);
   if (lastUser) {
@@ -123,17 +125,16 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
-  // Gemini 2.0 Flash: 1,500 RPD + 1M TPM gratis — suficiente para un catálogo con tools.
-  // Groq llama-3.3-70b: solo ~6K TPM → se agota con el primer mensaje (tools schema ~3,500 tokens).
-  // Sin fallback: los errores de streaming no se capturan con try/catch; la complejidad no vale la pena.
-  const model = process.env.GOOGLE_GENERATIVE_AI_API_KEY
-    ? googleAI("gemini-2.0-flash")
+  // Gemini 2.0 Flash: 1,500 RPD + 1M TPM gratis — maneja el tools schema sin problema.
+  // Groq llama-3.3-70b: ~6K TPM — se agota en el primer request con el schema de 8 tools.
+  const model = hasGemini
+    ? googleAI("gemini-2.0-flash", { structuredOutputs: true })
     : groq("llama-3.3-70b-versatile");
 
   console.log(
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY
-      ? "🟣 [GEMINI] gemini-2.0-flash"
-      : "🟡 [GROQ] llama-3.3-70b-versatile (sin GOOGLE_GENERATIVE_AI_API_KEY)",
+    hasGemini
+      ? "🟣 [GEMINI] gemini-2.0-flash (structuredOutputs: true)"
+      : "🟡 [GROQ] llama-3.3-70b-versatile",
   );
 
   const result = streamText({
@@ -154,6 +155,9 @@ export async function POST(request: Request) {
       toolCalls?.forEach((t: any) =>
         console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args).slice(0, 200)})`),
       );
+    },
+    onError: ({ error }: any) => {
+      console.error(`🔴 [STREAM ERROR] ${JSON.stringify(String(error?.message ?? error)).slice(0, 400)}`);
     },
   });
 
