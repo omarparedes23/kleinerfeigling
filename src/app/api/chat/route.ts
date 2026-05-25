@@ -43,6 +43,7 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 8. Si un producto no tiene stock, sugiere alternativas de sabor similar.
 9. ✅ Para confirmar pedido: SIEMPRE recopila dirección exacta (calle, número, referencias) Y distrito ANTES de llamar confirmar_pedido_chat.
 10. ❌ NUNCA llames confirmar_pedido_chat sin tener dirección y distrito confirmados por el usuario.
+11. ❌ NUNCA intentes crear cuentas de usuario ni pidas datos personales como nombre o contraseña. Si el usuario necesita crear cuenta: responde "Para crear tu cuenta entra al link de registro que aparece en pantalla — solo necesitas tu correo, te llegará un link mágico. Cuando vuelvas continuamos con tu pedido. 👉 [Crear cuenta](https://kleinerfeigling-navy.vercel.app/registro?next=/chat)". Si ya tiene cuenta: "Entra al link de login que aparece en pantalla. 👉 [Iniciar sesión](https://kleinerfeigling-navy.vercel.app/login?next=/chat)". El link Markdown es para la UI — la voz solo leerá la parte de texto antes del link.
 
 ## REGLA ANTI-ALUCINACIÓN — HERRAMIENTAS (CRÍTICA)
 - ❌ NUNCA afirmes haber ejecutado una acción sin haber llamado la herramienta correspondiente.
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
   );
 
   const systemPrompt = isVoiceMode
-    ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios en texto — la UI los muestra.\n- Habla natural, como si fuera una conversación oral.`
+    ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios en texto — la UI los muestra.\n- Habla natural, como si fuera una conversación oral.\n- ❌ NUNCA leas URLs ni links. Di "entra al link en pantalla" y punto.`
     : SYSTEM_PROMPT;
 
   // DeepSeek V3: contexto 64K, tool use nativo, sin límites de TPM estrictos.

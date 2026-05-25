@@ -14,29 +14,36 @@ export function useVoice({ onTranscriptionComplete }: UseVoiceOptions = {}) {
 
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const isHoldingRef = useRef(false);
-  // Tracks the in-progress start() promise to handle the race condition where
-  // the user releases the button before getUserMedia resolves (e.g. permission dialog)
   const startingRef = useRef<Promise<void> | null>(null);
+  // Tracks when recording actually started (after getUserMedia resolves)
+  // Used to enforce a minimum recording duration and avoid the Android Chrome
+  // permission-dialog race: tapping "Allow" fires touchend on the button,
+  // which calls stopRecording() milliseconds after start() resolves.
+  const recordingStartedAtRef = useRef<number>(0);
+  // Ref to track the current audioUrl for cleanup without useEffect dependency
+  const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     recorderRef.current = new VoiceRecorder();
     return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
     };
-  }, [audioUrl]);
+  }, []); // Only on mount — do NOT add audioUrl: would replace recorder mid-recording
 
   const startRecording = useCallback(async () => {
     if (!recorderRef.current) return;
 
     console.log("[MIC] Botón presionado — solicitando micrófono...");
     setError(null);
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
       setAudioUrl(null);
     }
 
     const promise = (async () => {
       await recorderRef.current!.start();
+      recordingStartedAtRef.current = Date.now();
       setIsRecording(true);
       console.log("[MIC] Grabando ✅");
       toast.info("Grabando audio... Habla ahora 🎙️");
@@ -58,7 +65,7 @@ export function useVoice({ onTranscriptionComplete }: UseVoiceOptions = {}) {
     } finally {
       startingRef.current = null;
     }
-  }, [audioUrl]);
+  }, []);
 
   const stopRecording = useCallback(async () => {
     // If start() is still pending (e.g. permission dialog open), wait for it first
@@ -77,9 +84,19 @@ export function useVoice({ onTranscriptionComplete }: UseVoiceOptions = {}) {
     setIsTranscribing(true);
 
     try {
+      // Minimum recording guard: Android Chrome fires touchend when the user
+      // taps "Allow" on the permission dialog, calling stopRecording() right
+      // after start() resolves. Enforce at least 500ms of actual recording.
+      const MIN_RECORDING_MS = 500;
+      const elapsed = Date.now() - recordingStartedAtRef.current;
+      if (elapsed < MIN_RECORDING_MS) {
+        await new Promise((resolve) => setTimeout(resolve, MIN_RECORDING_MS - elapsed));
+      }
+
       const audioBlob = await recorderRef.current.stop();
 
       const url = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = url;
       setAudioUrl(url);
 
       const formData = new FormData();
