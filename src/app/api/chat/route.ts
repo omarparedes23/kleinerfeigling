@@ -1,6 +1,5 @@
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { getTools } from "@/lib/ai/chat-config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
@@ -11,15 +10,7 @@ const groq = createOpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
-const googleAI = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-});
-
 export const maxDuration = 60;
-
-// Persiste en el proceso Node. Cuando Gemini agota cuota, todas las
-// solicitudes del proceso usan Groq. Se resetea al reiniciar el servidor.
-let geminiQuotaExhausted = false;
 
 const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner Feigling Perú. 🥂
 
@@ -83,6 +74,7 @@ export async function POST(request: Request) {
   const reqStart = Date.now();
   let user = null;
   let accessToken: string | undefined;
+
   try {
     const supabaseServer = await createServerSupabaseClient();
     const [userResult, sessionResult] = await Promise.all([
@@ -105,7 +97,6 @@ export async function POST(request: Request) {
   );
 
   const tools = getTools(supabase, user);
-
   const { messages } = (await request.json()) as { messages: CoreMessage[] };
 
   console.log(`📨 [CHAT] Mensajes en contexto: ${messages.length}`);
@@ -119,102 +110,24 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
-  const useGemini =
-    !!process.env.GOOGLE_GENERATIVE_AI_API_KEY && !geminiQuotaExhausted;
+  console.log("🟡 [GROQ] llama-3.3-70b-versatile");
 
-  console.log(
-    `🤖 [MODEL] ${useGemini ? "Gemini 2.5 Flash" : "Groq Llama 3.3 70b"}${geminiQuotaExhausted ? " (quota agotada — directo a Groq)" : ""}`,
-  );
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onFinish = ({ text, toolCalls, finishReason, usage }: any) => {
-    const elapsed = Date.now() - reqStart;
-    if (text) console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
-    if (usage) console.log(`📊 [TOKENS] prompt=${usage.promptTokens} completion=${usage.completionTokens} total=${usage.totalTokens}`);
-    if (finishReason && finishReason !== "stop") console.log(`⚠️ [FINISH_REASON] ${finishReason}`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    toolCalls?.forEach((t: any) =>
-      console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args).slice(0, 200)})`),
-    );
-  };
-
-  const sharedConfig = {
+  const result = streamText({
+    model: groq("llama-3.3-70b-versatile"),
     system: SYSTEM_PROMPT,
     messages,
     tools,
     maxSteps: 10,
-    onFinish,
-  } as const;
-
-  // ── Gemini con fallback automático a Groq vía TransformStream ──────────────
-  if (useGemini) {
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-    const writer = writable.getWriter();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pipeModel = async (model: any, maxRetries = 2) => {
-      const response = streamText({ model, ...sharedConfig, maxRetries }).toDataStreamResponse();
-      const reader = response.body!.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        await writer.write(value);
-      }
-    };
-
-    (async () => {
-      try {
-        console.log("🟣 [GEMINI] Iniciando stream...");
-        await pipeModel(googleAI("gemini-2.5-flash"), 0);
-        console.log(`✅ [GEMINI] Stream completado en ${Date.now() - reqStart}ms`);
-      } catch (err) {
-        const msg = String((err as any)?.message ?? err);
-        const status = (err as any)?.status ?? (err as any)?.statusCode ?? "?";
-        console.error(`🔴 [GEMINI ERROR] status=${status} msg="${msg.slice(0, 300)}"`);
-
-        const isQuota =
-          msg.includes("RetryError") ||
-          msg.includes("quota") ||
-          msg.includes("RESOURCE_EXHAUSTED") ||
-          msg.includes("429") ||
-          status === 429;
-
-        if (isQuota) {
-          geminiQuotaExhausted = true;
-          console.warn("⚠️ [GEMINI] Quota agotada — fallback a Groq.");
-          try {
-            console.log("🟡 [GROQ] Iniciando stream fallback...");
-            await pipeModel(groq("llama-3.3-70b-versatile"));
-            console.log(`✅ [GROQ] Stream completado en ${Date.now() - reqStart}ms`);
-          } catch (fallbackErr) {
-            const fMsg = String((fallbackErr as any)?.message ?? fallbackErr);
-            console.error(`🔴 [GROQ FALLBACK ERROR] "${fMsg.slice(0, 300)}"`);
-            writer.abort(fallbackErr as Error);
-            return;
-          }
-        } else {
-          console.error("🔴 [GEMINI] Error no-quota — abortando stream.");
-          writer.abort(err as Error);
-          return;
-        }
-      }
-      writer.close();
-    })();
-
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Vercel-AI-Data-Stream": "v1",
-        "Cache-Control": "no-cache",
-      },
-    });
-  }
-
-  // ── Groq directo (quota agotada ya conocida desde request anterior) ────────
-  console.log("🟡 [GROQ] Stream directo (sin Gemini)...");
-  const result = streamText({
-    model: groq("llama-3.3-70b-versatile"),
-    ...sharedConfig,
+    onFinish: ({ text, toolCalls, finishReason, usage }: any) => {
+      const elapsed = Date.now() - reqStart;
+      if (text) console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
+      if (usage) console.log(`📊 [TOKENS] prompt=${usage.promptTokens} completion=${usage.completionTokens}`);
+      if (finishReason && finishReason !== "stop") console.log(`⚠️ [FINISH] ${finishReason}`);
+      toolCalls?.forEach((t: any) =>
+        console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args).slice(0, 200)})`),
+      );
+    },
   });
+
   return result.toDataStreamResponse();
 }
