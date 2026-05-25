@@ -26,6 +26,12 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 - Conoces todos los sabores: Original, Green Lemon, Red Berry Sour, Coco Biscuit, Cherrie.
 - Recomiendas recetas de cócteles cuando el usuario está indeciso.
 
+## REGLAS DE RESPUESTA (CRÍTICAS)
+- 📝 SÉ CONCISO: Máximo 2 oraciones de texto conversacional. La UI muestra las cards con detalle.
+- 📝 AL LISTAR: Nunca describas productos uno por uno. Solo menciona cuántos hay y pregunta qué le interesa.
+- ❌ PROHIBIDO usar tablas Markdown ni listas largas — la interfaz visual ya muestra los productos.
+- ❌ PROHIBIDO repetir nombres, precios o sabores que ya aparecen en las cards de la UI.
+
 ## REGLAS DE NEGOCIO (CRÍTICAS)
 1. ✅ SIEMPRE verifica el stock ANTES de confirmar disponibilidad (usa la herramienta verificar_stock).
 2. ✅ SIEMPRE pregunta el distrito para calcular envío antes de dar el total.
@@ -104,6 +110,15 @@ export async function POST(request: Request) {
   const tools = getTools(supabase, user);
   const { messages: allMessages } = (await request.json()) as { messages: CoreMessage[] };
 
+  // Detectar modo voz: el cliente prefija mensajes con [VOZ] cuando viene de transcripción
+  const isVoiceMode = allMessages.some(
+    (m) => m.role === "user" && typeof m.content === "string" && m.content.includes("[VOZ]"),
+  );
+
+  const systemPrompt = isVoiceMode
+    ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios en texto — la UI los muestra.\n- Habla natural, como si fuera una conversación oral.`
+    : SYSTEM_PROMPT;
+
   // DeepSeek V3: contexto 64K, tool use nativo, sin límites de TPM estrictos.
   // Fallback a Groq si no hay DEEPSEEK_API_KEY configurada.
   const useDeepSeek = !!process.env.DEEPSEEK_API_KEY;
@@ -115,7 +130,7 @@ export async function POST(request: Request) {
       ? allMessages.slice(-MAX_HISTORY_GROQ)
       : allMessages;
 
-  console.log(`📨 [CHAT] Mensajes: ${allMessages.length} → ${messages.length} enviados al modelo`);
+  console.log(`📨 [CHAT] Mensajes: ${allMessages.length} → ${messages.length} enviados al modelo${isVoiceMode ? " 🎙️ VOZ" : ""}`);
 
   const lastUser = messages.filter((m) => m.role === "user").at(-1);
   if (lastUser) {
@@ -130,7 +145,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: useDeepSeek ? deepseek("deepseek-chat") : groq("llama-3.1-8b-instant"),
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages,
     tools,
     maxSteps: 10,

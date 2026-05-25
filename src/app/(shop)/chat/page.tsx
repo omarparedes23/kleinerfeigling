@@ -193,7 +193,7 @@ export default function ChatPage() {
     if (text && text.trim()) {
       append({
         role: "user",
-        content: text,
+        content: `[VOZ] ${text.trim()}`,
       });
     }
   };

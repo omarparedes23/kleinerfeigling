@@ -94,7 +94,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       const limit = args?.limit ?? 10;
       const { data } = await supabase
         .from("kleiner_products")
-        .select("id, nombre, slug, precio, precio_oferta, imagen_url, stock, sabor, volumen_ml")
+        .select("id, nombre, slug, precio, precio_oferta, imagen_url, stock, sabor")
         .eq("activo", true)
         .gt("stock", 0)
         .order("destacado", { ascending: false })
@@ -144,7 +144,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       const term = query.trim();
       const { data: ftsResults } = await supabase
         .from("kleiner_products")
-        .select("*")
+        .select("id, nombre, slug, precio, precio_oferta, imagen_url, stock, sabor")
         .or(`nombre.ilike.%${term}%,sabor.ilike.%${term}%,descripcion.ilike.%${term}%`)
         .eq("activo", true)
         .gt("stock", 0)
