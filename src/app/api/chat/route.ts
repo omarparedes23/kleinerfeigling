@@ -1,5 +1,6 @@
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { getTools } from "@/lib/ai/chat-config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
@@ -8,6 +9,10 @@ import type { Database } from "@/types/database";
 const groq = createOpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
+});
+
+const googleAI = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
 export const maxDuration = 60;
@@ -118,10 +123,21 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
-  console.log("🟡 [GROQ] llama-3.3-70b-versatile");
+  // Gemini 2.0 Flash: 1,500 RPD + 1M TPM gratis — suficiente para un catálogo con tools.
+  // Groq llama-3.3-70b: solo ~6K TPM → se agota con el primer mensaje (tools schema ~3,500 tokens).
+  // Sin fallback: los errores de streaming no se capturan con try/catch; la complejidad no vale la pena.
+  const model = process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    ? googleAI("gemini-2.0-flash")
+    : groq("llama-3.3-70b-versatile");
+
+  console.log(
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY
+      ? "🟣 [GEMINI] gemini-2.0-flash"
+      : "🟡 [GROQ] llama-3.3-70b-versatile (sin GOOGLE_GENERATIVE_AI_API_KEY)",
+  );
 
   const result = streamText({
-    model: groq("llama-3.3-70b-versatile"),
+    model,
     system: SYSTEM_PROMPT,
     messages,
     tools,
@@ -131,7 +147,7 @@ export async function POST(request: Request) {
       if (text) {
         console.log(`🤖 [BOT] (${elapsed}ms) "${text.slice(0, 120)}"`);
       } else {
-        console.log(`⚠️ [BOT] (${elapsed}ms) Respuesta vacía — finishReason: ${finishReason} — posible rate limit de Groq`);
+        console.log(`⚠️ [BOT] (${elapsed}ms) Respuesta vacía — finishReason: ${finishReason}`);
       }
       if (usage) console.log(`📊 [TOKENS] prompt=${usage.promptTokens} completion=${usage.completionTokens}`);
       if (finishReason && finishReason !== "stop") console.log(`⚠️ [FINISH] ${finishReason}`);
