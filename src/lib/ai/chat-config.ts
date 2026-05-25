@@ -87,12 +87,9 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
   listar_productos: tool({
     description:
       "Lista todos los productos disponibles de Kleiner Feigling. Usar cuando el usuario pregunta qué hay, qué tienen, o quiere ver el catálogo completo.",
-    parameters: z
-      .object({
-        limit: z.number().optional().default(10),
-      })
-      .nullable()
-      .optional(),
+    parameters: z.object({
+      limit: z.number().optional().default(10),
+    }),
     execute: async (args) => {
       const limit = args?.limit ?? 10;
       const { data } = await supabase
@@ -329,7 +326,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
   ver_carrito_chat: tool({
     description:
       "Muestra el contenido actual del carrito del usuario con precios y subtotales. Usar cuando pregunte '¿qué tengo en el carrito?', '¿cuánto es el total?' o quiera revisar su pedido antes de confirmar.",
-    parameters: z.object({}).nullable().optional(),
+    parameters: z.object({}),
     execute: async () => {
       console.log("🛒 [ver_carrito_chat] Iniciando...");
 
@@ -618,17 +615,14 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
   buscar_receta: tool({
     description:
       "Sugiere recetas de cócteles que se pueden preparar con los productos de Kleiner Feigling. Filtra por sabor si se especifica.",
-    parameters: z
-      .object({
-        producto: z
-          .string()
-          .optional()
-          .describe(
-            "Sabor específico para filtrar recetas (Original, Green Lemon, Red Berry Sour, Coco Biscuit, Cherrie)",
-          ),
-      })
-      .nullable()
-      .optional(),
+    parameters: z.object({
+      producto: z
+        .string()
+        .optional()
+        .describe(
+          "Sabor específico para filtrar recetas (Original, Green Lemon, Red Berry Sour, Coco Biscuit, Cherrie)",
+        ),
+    }),
     execute: async (args) => {
       const producto = args?.producto;
       if (producto) {
