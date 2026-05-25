@@ -10,6 +10,11 @@ const groq = createOpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
+const deepseek = createOpenAI({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
+});
+
 export const maxDuration = 60;
 
 const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner Feigling Perú. 🥂
@@ -99,12 +104,16 @@ export async function POST(request: Request) {
   const tools = getTools(supabase, user);
   const { messages: allMessages } = (await request.json()) as { messages: CoreMessage[] };
 
-  // llama-3.1-8b-instant: 30,000 TPM en free tier (vs 6,000 del 70b).
-  // Con el tools schema de 8 herramientas (~3,500 tokens base) permite ~8 requests/min.
-  // Groq free tier: historial recortado a 4 mensajes para maximizar requests disponibles.
-  const MAX_HISTORY = 4;
+  // DeepSeek V3: contexto 64K, tool use nativo, sin límites de TPM estrictos.
+  // Fallback a Groq si no hay DEEPSEEK_API_KEY configurada.
+  const useDeepSeek = !!process.env.DEEPSEEK_API_KEY;
+
+  // Groq free tier necesita historial corto; DeepSeek soporta contexto completo.
+  const MAX_HISTORY_GROQ = 4;
   const messages: CoreMessage[] =
-    allMessages.length > MAX_HISTORY ? allMessages.slice(-MAX_HISTORY) : allMessages;
+    !useDeepSeek && allMessages.length > MAX_HISTORY_GROQ
+      ? allMessages.slice(-MAX_HISTORY_GROQ)
+      : allMessages;
 
   console.log(`📨 [CHAT] Mensajes: ${allMessages.length} → ${messages.length} enviados al modelo`);
 
@@ -117,10 +126,10 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
-  console.log("🟡 [GROQ] llama-3.1-8b-instant (30K TPM)");
+  console.log(useDeepSeek ? "🔵 [DEEPSEEK] deepseek-chat" : "🟡 [GROQ] llama-3.1-8b-instant");
 
   const result = streamText({
-    model: groq("llama-3.1-8b-instant"),
+    model: useDeepSeek ? deepseek("deepseek-chat") : groq("llama-3.1-8b-instant"),
     system: SYSTEM_PROMPT,
     messages,
     tools,
