@@ -1,6 +1,5 @@
 import { streamText, type CoreMessage } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { getTools } from "@/lib/ai/chat-config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
@@ -11,15 +10,7 @@ const groq = createOpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
-const googleAI = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-});
-
 export const maxDuration = 60;
-
-// Flag de proceso: cuando Gemini agota cuota, las requests siguientes van a Groq.
-// Se resetea al reiniciar el servidor (aceptable para demo/testing).
-let geminiQuotaExhausted = false;
 
 const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner Feigling Perú. 🥂
 
@@ -108,16 +99,12 @@ export async function POST(request: Request) {
   const tools = getTools(supabase, user);
   const { messages: allMessages } = (await request.json()) as { messages: CoreMessage[] };
 
-  const hasGemini = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-  const useGemini = hasGemini && !geminiQuotaExhausted;
-
-  // Gemini: 1M tokens de contexto — sin recorte de historial.
-  // Groq free tier: ~6K TPM — recortamos historial para no superar la cuota.
-  const MAX_HISTORY_GROQ = 6;
+  // llama-3.1-8b-instant: 30,000 TPM en free tier (vs 6,000 del 70b).
+  // Con el tools schema de 8 herramientas (~3,500 tokens base) permite ~8 requests/min.
+  // Groq free tier: historial recortado a 4 mensajes para maximizar requests disponibles.
+  const MAX_HISTORY = 4;
   const messages: CoreMessage[] =
-    !useGemini && allMessages.length > MAX_HISTORY_GROQ
-      ? allMessages.slice(-MAX_HISTORY_GROQ)
-      : allMessages;
+    allMessages.length > MAX_HISTORY ? allMessages.slice(-MAX_HISTORY) : allMessages;
 
   console.log(`📨 [CHAT] Mensajes: ${allMessages.length} → ${messages.length} enviados al modelo`);
 
@@ -130,18 +117,10 @@ export async function POST(request: Request) {
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
   }
 
-  const model = useGemini
-    ? googleAI("gemini-2.0-flash", { structuredOutputs: true })
-    : groq("llama-3.3-70b-versatile");
-
-  console.log(
-    useGemini
-      ? "🟣 [GEMINI] gemini-2.0-flash"
-      : `🟡 [GROQ] llama-3.3-70b-versatile${geminiQuotaExhausted ? " (Gemini cuota agotada)" : ""}`,
-  );
+  console.log("🟡 [GROQ] llama-3.1-8b-instant (30K TPM)");
 
   const result = streamText({
-    model,
+    model: groq("llama-3.1-8b-instant"),
     system: SYSTEM_PROMPT,
     messages,
     tools,
@@ -162,16 +141,6 @@ export async function POST(request: Request) {
     onError: ({ error }: any) => {
       const msg = String(error?.message ?? error);
       console.error(`🔴 [STREAM ERROR] "${msg.slice(0, 400)}"`);
-
-      const isQuota =
-        msg.includes("quota") ||
-        msg.includes("RESOURCE_EXHAUSTED") ||
-        msg.includes("limit: 0");
-
-      if (useGemini && isQuota) {
-        geminiQuotaExhausted = true;
-        console.warn("⚠️ Gemini cuota agotada — próximas requests usarán Groq automáticamente.");
-      }
     },
   });
 
