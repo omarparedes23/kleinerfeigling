@@ -115,15 +115,29 @@ export default function ChatPage() {
         return;
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
+      const contentType = res.headers.get("Content-Type") ?? "";
+      let audioUrl: string;
+      let isObjectUrl = false;
+
+      if (contentType.includes("application/json")) {
+        const data = (await res.json()) as { url: string; cached: boolean };
+        audioUrl = data.url;
+        console.log(`[TTS] R2 URL (cached=${data.cached})`);
+      } else {
+        // Fallback: R2 no disponible, servidor retornó buffer directo
+        const blob = await res.blob();
+        audioUrl = URL.createObjectURL(blob);
+        isObjectUrl = true;
+        console.log(`[TTS] Buffer fallback — ObjectURL`);
+      }
+
+      const audio = new Audio(audioUrl);
       currentAudioRef.current = audio;
-      audio.onended = () => URL.revokeObjectURL(url);
+      if (isObjectUrl) audio.onended = () => URL.revokeObjectURL(audioUrl);
       audio.play().catch((e) => {
         console.error("[TTS] audio.play() falló:", e);
         toast.error("🔴 El navegador bloqueó el audio. Interactúa con la página primero.", { duration: 5000 });
-        URL.revokeObjectURL(url);
+        if (isObjectUrl) URL.revokeObjectURL(audioUrl);
       });
     } catch (e: any) {
       console.error("[TTS] excepción:", e);

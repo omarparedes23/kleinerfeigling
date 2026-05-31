@@ -399,6 +399,33 @@ export type Database = {
           },
         ]
       }
+      kleiner_tts_cache: {
+        Row: {
+          char_count: number | null
+          created_at: string
+          hit_count: number
+          r2_url: string
+          text_content: string | null
+          text_hash: string
+        }
+        Insert: {
+          char_count?: number | null
+          created_at?: string
+          hit_count?: number
+          r2_url: string
+          text_content?: string | null
+          text_hash: string
+        }
+        Update: {
+          char_count?: number | null
+          created_at?: string
+          hit_count?: number
+          r2_url?: string
+          text_content?: string | null
+          text_hash?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
