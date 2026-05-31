@@ -98,11 +98,11 @@ export function CartProvider({ children }: CartProviderProps) {
           mergedMap.set(item.id, { ...item });
         });
 
-        // Add local items (combining quantity if matching)
+        // Add local items (take max per item to prevent doubling on repeated syncs)
         localItems.forEach((item) => {
           const existing = mergedMap.get(item.id);
           if (existing) {
-            existing.cantidad += item.cantidad;
+            existing.cantidad = Math.max(existing.cantidad, item.cantidad);
           } else {
             mergedMap.set(item.id, { ...item });
           }

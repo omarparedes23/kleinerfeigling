@@ -118,7 +118,7 @@ export async function POST(request: Request) {
   );
 
   const systemPrompt = isVoiceMode
-    ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios en texto — la UI los muestra.\n- Habla natural, como si fuera una conversación oral.\n- ❌ NUNCA leas URLs ni links. Di "entra al link en pantalla" y punto.`
+    ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios individuales en texto — la UI los muestra en pantalla.\n- Al mostrar carrito: di SOLO "Aquí está tu carrito" o "Tienes X productos" — NUNCA listes nombres con precios.\n- Habla natural, como si fuera una conversación oral.\n- ❌ NUNCA leas URLs ni links. Di "entra al link en pantalla" y punto.`
     : SYSTEM_PROMPT;
 
   // DeepSeek V3: contexto 64K, tool use nativo, sin límites de TPM estrictos.

@@ -250,6 +250,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
 
   /**
    * Agrega productos al carrito del usuario en Supabase.
+   * Escribe siempre en formato CartItem[] (compatible con cart-provider).
    */
   agregar_al_carrito: tool({
     description:
@@ -260,7 +261,6 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
     }),
     execute: async ({ product_id, cantidad }) => {
       if (!user) {
-        // Carrito anónimo - retornamos error (requiere auth para persistir)
         return {
           ok: false,
           total_items: 0,
@@ -268,7 +268,17 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         };
       }
 
-      // Buscar carrito activo del usuario
+      // Fetch product details to build a full CartItem
+      const { data: product } = await supabase
+        .from("kleiner_products")
+        .select("id, nombre, slug, precio, precio_oferta, imagen_url, volumen_ml")
+        .eq("id", product_id)
+        .single();
+
+      if (!product) {
+        return { ok: false, total_items: 0, mensaje: "Producto no encontrado." };
+      }
+
       const { data: cart } = await supabase
         .from("kleiner_cart_sessions")
         .select("id, session_data")
@@ -276,32 +286,41 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         .eq("activo", true)
         .single();
 
-      const currentItems: Array<{
-        product_id: number;
-        cantidad: number;
-      }> = (cart?.session_data as { items: { product_id: number; cantidad: number }[] })
-        ?.items ?? [];
+      // Parse existing items — handle both CartItem[] and legacy { items: [] } formats
+      type CartItemShape = { id: number; nombre: string; slug: string; cantidad: number; precio: number; volumen_ml: number; imagen_url: string };
+      let existingItems: CartItemShape[] = [];
+      const raw = cart?.session_data;
+      if (Array.isArray(raw)) {
+        existingItems = raw as CartItemShape[];
+      }
+      // Legacy { items: [...] } format is discarded — cart-provider will re-sync from local state
 
-      // Actualizar o agregar el item
-      const existingIndex = currentItems.findIndex(
-        (item) => item.product_id === product_id,
-      );
+      const vol = product.volumen_ml ?? 20;
+      const cartItemId = product_id * 10000 + vol;
+      const unitPrice = product.precio_oferta ? Number(product.precio_oferta) : Number(product.precio);
 
+      const existingIndex = existingItems.findIndex((item) => item.id === cartItemId);
       if (existingIndex >= 0) {
-        currentItems[existingIndex].cantidad += cantidad;
+        existingItems[existingIndex].cantidad += cantidad;
       } else {
-        currentItems.push({ product_id, cantidad });
+        existingItems.push({
+          id: cartItemId,
+          nombre: product.nombre,
+          slug: product.slug ?? "",
+          cantidad,
+          precio: unitPrice,
+          volumen_ml: vol,
+          imagen_url: product.imagen_url ?? "",
+        });
       }
 
-      const totalItems = currentItems.reduce((acc, item) => acc + item.cantidad, 0);
-
-      const sessionData = { items: currentItems };
+      const totalItems = existingItems.reduce((acc, item) => acc + item.cantidad, 0);
 
       if (cart) {
         const { error: updateError } = await supabase
           .from("kleiner_cart_sessions")
           .update({
-            session_data: sessionData as unknown as Json,
+            session_data: existingItems as unknown as Json,
             actualizado_en: new Date().toISOString(),
           })
           .eq("id", cart.id);
@@ -313,7 +332,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       } else {
         const { error: insertError } = await supabase.from("kleiner_cart_sessions").insert({
           usuario_id: user.id,
-          session_data: sessionData as unknown as Json,
+          session_data: existingItems as unknown as Json,
           activo: true,
         });
 
@@ -356,8 +375,19 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
 
       if (cartError) console.warn("🛒 [ver_carrito_chat] Error leyendo carrito:", cartError.message);
 
-      const cartItems: { product_id: number; cantidad: number }[] =
-        (cart?.session_data as { items: { product_id: number; cantidad: number }[] })?.items ?? [];
+      // Parse session_data — handle CartItem[] (cart-provider) and legacy { items: [] } formats
+      const rawData = cart?.session_data;
+      let cartItems: { product_id: number; cantidad: number }[];
+      if (Array.isArray(rawData)) {
+        // CartItem[] format: id = productId * 10000 + volumen_ml
+        cartItems = (rawData as any[]).map((item) => ({
+          product_id: Math.floor(item.id / 10000),
+          cantidad: item.cantidad,
+        }));
+      } else {
+        // Legacy { items: [...] } format
+        cartItems = (rawData as any)?.items ?? [];
+      }
 
       console.log("🛒 [ver_carrito_chat] Items en carrito:", cartItems);
 
@@ -443,8 +473,17 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
 
       if (cartError) console.warn("📦 [confirmar_pedido_chat] Error leyendo carrito:", cartError.message);
 
-      const cartItems: { product_id: number; cantidad: number }[] =
-        (cart?.session_data as { items: { product_id: number; cantidad: number }[] })?.items ?? [];
+      // Parse session_data — handle CartItem[] (cart-provider) and legacy { items: [] } formats
+      const rawCartData = cart?.session_data;
+      let cartItems: { product_id: number; cantidad: number }[];
+      if (Array.isArray(rawCartData)) {
+        cartItems = (rawCartData as any[]).map((item) => ({
+          product_id: Math.floor(item.id / 10000),
+          cantidad: item.cantidad,
+        }));
+      } else {
+        cartItems = (rawCartData as any)?.items ?? [];
+      }
 
       console.log("📦 [confirmar_pedido_chat] Items en carrito:", cartItems);
 
