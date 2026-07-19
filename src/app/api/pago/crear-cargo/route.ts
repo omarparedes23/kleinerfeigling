@@ -204,6 +204,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Desactivar el carrito activo del usuario — el pedido ya quedó registrado en kleiner_orders/kleiner_order_items.
+    // Sin esto, kleiner_cart_items sigue mostrando los productos ya pagados (riesgo de pedido duplicado).
+    const { error: cartDeactivateError } = await adminClient
+      .from("kleiner_cart_sessions")
+      .update({ activo: false, actualizado_en: new Date().toISOString() })
+      .eq("usuario_id", user.id)
+      .eq("activo", true);
+
+    if (cartDeactivateError) {
+      console.error("Error desactivando carrito tras el pago:", cartDeactivateError);
+    }
+
     return NextResponse.json({
       success: true,
       orderCode,

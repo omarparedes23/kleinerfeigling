@@ -37,6 +37,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Logs de conversación del chatbot (solo pruebas locales)
+logs/
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

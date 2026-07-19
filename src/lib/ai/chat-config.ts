@@ -1,8 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import OpenAI from "openai";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json, Database } from "@/types/database";
+import type { Database } from "@/types/database";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 // ─── OpenAI client para embeddings ──────────────────────────
@@ -249,15 +248,15 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
   }),
 
   /**
-   * Agrega productos al carrito del usuario en Supabase.
-   * Escribe siempre en formato CartItem[] (compatible con cart-provider).
+   * Agrega productos al carrito del usuario en Supabase vía la función atómica
+   * agregar_item_carrito (misma que usa el cliente), evitando condiciones de carrera.
    */
   agregar_al_carrito: tool({
     description:
       "Agrega uno o más productos al carrito del usuario. Retorna el total de items actualizado.",
     parameters: z.object({
       product_id: z.number().describe("ID numérico del producto"),
-      cantidad: z.number().positive().describe("Cantidad a agregar"),
+      cantidad: z.number().int().positive().max(50).describe("Cantidad a agregar (máximo 50 por pedido)"),
     }),
     execute: async ({ product_id, cantidad }) => {
       if (!user) {
@@ -268,10 +267,9 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         };
       }
 
-      // Fetch product details to build a full CartItem
       const { data: product } = await supabase
         .from("kleiner_products")
-        .select("id, nombre, slug, precio, precio_oferta, imagen_url, volumen_ml")
+        .select("id, volumen_ml")
         .eq("id", product_id)
         .single();
 
@@ -279,73 +277,126 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         return { ok: false, total_items: 0, mensaje: "Producto no encontrado." };
       }
 
-      const { data: cart } = await supabase
-        .from("kleiner_cart_sessions")
-        .select("id, session_data")
-        .eq("usuario_id", user.id)
-        .eq("activo", true)
-        .single();
+      // Función atómica: suma cantidad al ítem (o lo crea) sin condición de carrera
+      // con el cliente, que llama la misma función desde el navegador.
+      const { data, error } = await supabase.rpc("agregar_item_carrito", {
+        p_usuario_id: user.id,
+        p_product_id: product_id,
+        p_volumen_ml: product.volumen_ml ?? 20,
+        p_cantidad: cantidad,
+      });
 
-      // Parse existing items — handle both CartItem[] and legacy { items: [] } formats
-      type CartItemShape = { id: number; nombre: string; slug: string; cantidad: number; precio: number; volumen_ml: number; imagen_url: string };
-      let existingItems: CartItemShape[] = [];
-      const raw = cart?.session_data;
-      if (Array.isArray(raw)) {
-        existingItems = raw as CartItemShape[];
-      }
-      // Legacy { items: [...] } format is discarded — cart-provider will re-sync from local state
-
-      const vol = product.volumen_ml ?? 20;
-      const cartItemId = product_id * 10000 + vol;
-      const unitPrice = product.precio_oferta ? Number(product.precio_oferta) : Number(product.precio);
-
-      const existingIndex = existingItems.findIndex((item) => item.id === cartItemId);
-      if (existingIndex >= 0) {
-        existingItems[existingIndex].cantidad += cantidad;
-      } else {
-        existingItems.push({
-          id: cartItemId,
-          nombre: product.nombre,
-          slug: product.slug ?? "",
-          cantidad,
-          precio: unitPrice,
-          volumen_ml: vol,
-          imagen_url: product.imagen_url ?? "",
-        });
+      if (error || !data || data.length === 0) {
+        console.error("[agregar_al_carrito] Error en RPC agregar_item_carrito:", error?.message);
+        return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
       }
 
-      const totalItems = existingItems.reduce((acc, item) => acc + item.cantidad, 0);
-
-      if (cart) {
-        const { error: updateError } = await supabase
-          .from("kleiner_cart_sessions")
-          .update({
-            session_data: existingItems as unknown as Json,
-            actualizado_en: new Date().toISOString(),
-          })
-          .eq("id", cart.id);
-
-        if (updateError) {
-          console.error("[agregar_al_carrito] Error actualizando carrito:", updateError.message);
-          return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
-        }
-      } else {
-        const { error: insertError } = await supabase.from("kleiner_cart_sessions").insert({
-          usuario_id: user.id,
-          session_data: existingItems as unknown as Json,
-          activo: true,
-        });
-
-        if (insertError) {
-          console.error("[agregar_al_carrito] Error creando carrito:", insertError.message);
-          return { ok: false, total_items: 0, mensaje: "Error al crear el carrito. Inténtalo de nuevo." };
-        }
-      }
+      const totalItems = data[0].out_total_items;
 
       return {
         ok: true,
         total_items: totalItems,
         mensaje: `✅ Producto agregado. Tu carrito tiene ${totalItems} ${totalItems === 1 ? "unidad" : "unidades"}.`,
+      };
+    },
+  }),
+
+  /**
+   * Corrige la cantidad EXACTA de un producto ya en el carrito (o lo agrega si no está).
+   * A diferencia de agregar_al_carrito (que suma), esta fija el valor — usar para correcciones.
+   */
+  modificar_cantidad_carrito: tool({
+    description:
+      "Corrige la cantidad EXACTA de un producto ya en el carrito, o lo agrega si no está. Usar SIEMPRE que el usuario corrija una cantidad ya agregada (ej. 'mejor que sean 3') — NUNCA volver a llamar agregar_al_carrito para corregir, esa suma en vez de fijar. cantidad=0 elimina el producto del carrito.",
+    parameters: z.object({
+      product_id: z.number().describe("ID numérico del producto"),
+      cantidad: z.number().int().min(0).max(50).describe("Cantidad final exacta. 0 elimina el producto del carrito."),
+    }),
+    execute: async ({ product_id, cantidad }) => {
+      if (!user) {
+        return {
+          ok: false,
+          total_items: 0,
+          mensaje: "Debes iniciar sesión para modificar el carrito.",
+        };
+      }
+
+      const { data: product } = await supabase
+        .from("kleiner_products")
+        .select("id, volumen_ml")
+        .eq("id", product_id)
+        .single();
+
+      if (!product) {
+        return { ok: false, total_items: 0, mensaje: "Producto no encontrado." };
+      }
+
+      let { data: cart } = await supabase
+        .from("kleiner_cart_sessions")
+        .select("id")
+        .eq("usuario_id", user.id)
+        .eq("activo", true)
+        .single();
+
+      if (!cart) {
+        if (cantidad === 0) {
+          return { ok: true, total_items: 0, mensaje: "Tu carrito ya está vacío." };
+        }
+        const { data: newCart, error: newCartError } = await supabase
+          .from("kleiner_cart_sessions")
+          .insert({ usuario_id: user.id, activo: true })
+          .select("id")
+          .single();
+
+        if (newCartError || !newCart) {
+          console.error("[modificar_cantidad_carrito] Error creando carrito:", newCartError?.message);
+          return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
+        }
+        cart = newCart;
+      }
+
+      const vol = product.volumen_ml ?? 20;
+
+      if (cantidad === 0) {
+        const { error: deleteError } = await supabase
+          .from("kleiner_cart_items")
+          .delete()
+          .eq("cart_id", cart.id)
+          .eq("product_id", product_id)
+          .eq("volumen_ml", vol);
+
+        if (deleteError) {
+          console.error("[modificar_cantidad_carrito] Error eliminando ítem:", deleteError.message);
+          return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
+        }
+      } else {
+        const { error: upsertError } = await supabase
+          .from("kleiner_cart_items")
+          .upsert(
+            { cart_id: cart.id, product_id, volumen_ml: vol, cantidad, actualizado_en: new Date().toISOString() },
+            { onConflict: "cart_id,product_id,volumen_ml" },
+          );
+
+        if (upsertError) {
+          console.error("[modificar_cantidad_carrito] Error actualizando ítem:", upsertError.message);
+          return { ok: false, total_items: 0, mensaje: "Error al actualizar el carrito. Inténtalo de nuevo." };
+        }
+      }
+
+      const { data: items } = await supabase
+        .from("kleiner_cart_items")
+        .select("cantidad")
+        .eq("cart_id", cart.id);
+
+      const totalItems = (items ?? []).reduce((acc, i) => acc + i.cantidad, 0);
+
+      return {
+        ok: true,
+        total_items: totalItems,
+        mensaje:
+          cantidad === 0
+            ? `✅ Producto eliminado. Tu carrito tiene ${totalItems} ${totalItems === 1 ? "unidad" : "unidades"}.`
+            : `✅ Cantidad corregida a ${cantidad}. Tu carrito tiene ${totalItems} ${totalItems === 1 ? "unidad" : "unidades"}.`,
       };
     },
   }),
@@ -368,47 +419,32 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
 
       const { data: cart, error: cartError } = await supabase
         .from("kleiner_cart_sessions")
-        .select("id, session_data")
+        .select("id")
         .eq("usuario_id", user.id)
         .eq("activo", true)
         .single();
 
       if (cartError) console.warn("🛒 [ver_carrito_chat] Error leyendo carrito:", cartError.message);
 
-      // Parse session_data — handle CartItem[] (cart-provider) and legacy { items: [] } formats
-      const rawData = cart?.session_data;
-      let cartItems: { product_id: number; cantidad: number }[];
-      if (Array.isArray(rawData)) {
-        // CartItem[] format: id = productId * 10000 + volumen_ml
-        cartItems = (rawData as any[]).map((item) => ({
-          product_id: Math.floor(item.id / 10000),
-          cantidad: item.cantidad,
-        }));
-      } else {
-        // Legacy { items: [...] } format
-        cartItems = (rawData as any)?.items ?? [];
-      }
-
-      console.log("🛒 [ver_carrito_chat] Items en carrito:", cartItems);
-
-      if (cartItems.length === 0) {
+      if (!cart) {
         return { ok: true, items: [], subtotal: 0, total_items: 0, mensaje: "Tu carrito está vacío. ¿Quieres ver nuestros productos?" };
       }
 
-      const productIds = cartItems.map((i) => i.product_id);
-      const { data: products, error: productsError } = await supabase
-        .from("kleiner_products")
-        .select("id, nombre, precio, precio_oferta, imagen_url, sabor, volumen_ml")
-        .in("id", productIds);
+      const { data: cartItems, error: itemsError } = await supabase
+        .from("kleiner_cart_items")
+        .select("product_id, cantidad, kleiner_products(nombre, precio, precio_oferta, imagen_url, sabor)")
+        .eq("cart_id", cart.id);
 
-      if (productsError) console.error("🛒 [ver_carrito_chat] Error leyendo productos:", productsError.message);
-      console.log("🛒 [ver_carrito_chat] Productos obtenidos:", products?.map((p) => p.nombre));
+      if (itemsError) console.error("🛒 [ver_carrito_chat] Error leyendo items:", itemsError.message);
+      console.log("🛒 [ver_carrito_chat] Items en carrito:", cartItems);
 
-      const productMap = new Map((products ?? []).map((p) => [p.id, p]));
+      if (!cartItems || cartItems.length === 0) {
+        return { ok: true, items: [], subtotal: 0, total_items: 0, mensaje: "Tu carrito está vacío. ¿Quieres ver nuestros productos?" };
+      }
 
-      const enrichedItems = cartItems
+      const enrichedItems = (cartItems as any[])
         .map((item) => {
-          const product = productMap.get(item.product_id);
+          const product = item.kleiner_products;
           if (!product) {
             console.warn(`🛒 [ver_carrito_chat] Producto ID ${item.product_id} no encontrado en DB`);
             return null;
@@ -444,11 +480,13 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
   }),
 
   /**
-   * Confirma y crea el pedido en base al carrito activo del usuario.
+   * Valida el carrito (distrito + stock) y prepara el handoff a /carrito para pagar con tarjeta (Stripe).
+   * No crea la orden ni decrementa stock — eso pasa en un solo lugar (crear-cargo), en el momento real del pago,
+   * igual que para un comprador manual. Así se evita reservar stock de pedidos que nunca se pagan.
    */
   confirmar_pedido_chat: tool({
     description:
-      "Crea el pedido final en base al carrito del usuario. Usar SOLO cuando el usuario haya confirmado explícitamente la dirección de entrega, el distrito y que desea proceder al pago.",
+      "Valida el carrito, el distrito y el stock, y prepara el pedido para pagar con tarjeta. Usar SOLO cuando el usuario haya confirmado explícitamente la dirección de entrega, el distrito y que desea proceder al pago. No crea la orden todavía — eso pasa al pagar en /carrito.",
     parameters: z.object({
       direccion: z.string().describe("Dirección exacta de entrega (calle, número, referencias)"),
       distrito: z.string().describe("Distrito de Lima para el delivery"),
@@ -466,28 +504,28 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       // 1. Read cart
       const { data: cart, error: cartError } = await supabase
         .from("kleiner_cart_sessions")
-        .select("id, session_data")
+        .select("id")
         .eq("usuario_id", user.id)
         .eq("activo", true)
         .single();
 
       if (cartError) console.warn("📦 [confirmar_pedido_chat] Error leyendo carrito:", cartError.message);
 
-      // Parse session_data — handle CartItem[] (cart-provider) and legacy { items: [] } formats
-      const rawCartData = cart?.session_data;
-      let cartItems: { product_id: number; cantidad: number }[];
-      if (Array.isArray(rawCartData)) {
-        cartItems = (rawCartData as any[]).map((item) => ({
-          product_id: Math.floor(item.id / 10000),
-          cantidad: item.cantidad,
-        }));
-      } else {
-        cartItems = (rawCartData as any)?.items ?? [];
+      if (!cart) {
+        return { ok: false, mensaje: "Tu carrito está vacío. Agrega productos antes de confirmar el pedido." };
       }
+
+      const { data: rawCartItems, error: cartItemsError } = await supabase
+        .from("kleiner_cart_items")
+        .select("product_id, cantidad")
+        .eq("cart_id", cart.id);
+
+      if (cartItemsError) console.warn("📦 [confirmar_pedido_chat] Error leyendo items:", cartItemsError.message);
+      const cartItems: { product_id: number; cantidad: number }[] = rawCartItems ?? [];
 
       console.log("📦 [confirmar_pedido_chat] Items en carrito:", cartItems);
 
-      if (!cart || cartItems.length === 0) {
+      if (cartItems.length === 0) {
         return { ok: false, mensaje: "Tu carrito está vacío. Agrega productos antes de confirmar el pedido." };
       }
 
@@ -549,86 +587,7 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
       const total = subtotal + shippingFee;
       console.log(`📦 [confirmar_pedido_chat] Totales — subtotal: ${subtotal}, envío: ${shippingFee}, total: ${total}`);
 
-      // 6. Generate order code
-      const now = new Date();
-      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-      const randomStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-      const orderCode = `KF-${dateStr}-${randomStr}`;
-      console.log("📦 [confirmar_pedido_chat] Código de pedido:", orderCode);
-
-      // 7. Create order (user RLS policy allows insert with auth.uid() = usuario_id)
-      const { data: order, error: orderError } = await supabase
-        .from("kleiner_orders")
-        .insert({
-          usuario_id: user.id,
-          codigo_pedido: orderCode,
-          estado: "pendiente",
-          subtotal,
-          tarifa_envio: shippingFee,
-          descuento: 0,
-          total,
-          distrito_id: districtData.id,
-          direccion_envio: direccion,
-          notas: notas ?? null,
-          origen: "bot_ia",
-          pago_estado: "pendiente",
-        })
-        .select("id")
-        .single();
-
-      if (orderError || !order) {
-        console.error("📦 [confirmar_pedido_chat] Error creando orden:", orderError);
-        return { ok: false, mensaje: "Hubo un error al crear el pedido. Por favor inténtalo nuevamente." };
-      }
-      console.log("📦 [confirmar_pedido_chat] Orden creada con ID:", order.id);
-
-      // 8. Insert order items (requires admin client — no user INSERT policy on order_items)
-      const orderItems = cartItems.map((item) => {
-        const p = productMap.get(item.product_id)!;
-        const unitPrice = p.precio_oferta ? Number(p.precio_oferta) : Number(p.precio);
-        return {
-          order_id: order.id,
-          product_id: item.product_id,
-          cantidad: item.cantidad,
-          precio_unitario: unitPrice,
-          subtotal: unitPrice * item.cantidad,
-        };
-      });
-
-      const admin = createAdminClient();
-      console.log("📦 [confirmar_pedido_chat] Insertando order items:", orderItems);
-      const { error: itemsError } = await admin.from("kleiner_order_items").insert(orderItems);
-
-      if (itemsError) {
-        console.error("📦 [confirmar_pedido_chat] Error insertando order items:", itemsError);
-        return { ok: false, mensaje: "Error al registrar los detalles del pedido. Contacta soporte." };
-      }
-      console.log("📦 [confirmar_pedido_chat] Order items insertados OK");
-
-      // 9. Decrement stock (RPC uses security definer — works with user client)
-      const stockResults = await Promise.all(
-        cartItems.map((item) =>
-          supabase.rpc("decrementar_stock_seguro", {
-            p_product_id: item.product_id,
-            p_cantidad: item.cantidad,
-          }),
-        ),
-      );
-      stockResults.forEach((r, i) => {
-        if (r.error) console.error(`📦 [confirmar_pedido_chat] Error decrementando stock producto ${cartItems[i].product_id}:`, r.error);
-        else console.log(`📦 [confirmar_pedido_chat] Stock decrementado OK — producto ${cartItems[i].product_id}:`, r.data);
-      });
-
-      // 10. Deactivate cart
-      const { error: cartDeactivateError } = await supabase
-        .from("kleiner_cart_sessions")
-        .update({ activo: false, actualizado_en: new Date().toISOString() })
-        .eq("id", cart.id);
-
-      if (cartDeactivateError) console.error("📦 [confirmar_pedido_chat] Error desactivando carrito:", cartDeactivateError);
-      else console.log("📦 [confirmar_pedido_chat] Carrito desactivado OK");
-
-      // 11. Build items summary
+      // 6. Build items summary (la orden real se crea recién al pagar en /carrito vía crear-cargo)
       const itemsSummary = cartItems.map((item) => {
         const p = productMap.get(item.product_id)!;
         const unitPrice = p.precio_oferta ? Number(p.precio_oferta) : Number(p.precio);
@@ -640,20 +599,21 @@ export const getTools = (supabase: SupabaseClient<Database>, user: User | null) 
         };
       });
 
+      const params = new URLSearchParams({ distrito_id: String(districtData.id), direccion });
+      if (notas) params.set("notas", notas);
+
       const response = {
         ok: true,
-        order_id: order.id,
-        codigo_pedido: orderCode,
         items: itemsSummary,
         subtotal,
         tarifa_envio: shippingFee,
         total,
         distrito: districtData.nombre,
         direccion_envio: direccion,
-        payment_url: `/carrito?order_id=${order.id}`,
-        mensaje: `¡Pedido ${orderCode} creado! Total: S/ ${total.toFixed(2)}. Procede al pago por Culqi.`,
+        payment_url: `/carrito?${params.toString()}`,
+        mensaje: `Todo listo. Total: S/ ${total.toFixed(2)}. Entra a tu carrito para pagar con tarjeta.`,
       };
-      console.log("📦 [confirmar_pedido_chat] Éxito:", JSON.stringify({ order_id: order.id, codigo: orderCode, total }));
+      console.log("📦 [confirmar_pedido_chat] Validado OK:", JSON.stringify({ total, distrito: districtData.nombre }));
       return response;
     },
   }),

@@ -30,7 +30,7 @@ export function ProductCard({ product }: ProductCardProps) {
       return;
     }
 
-    addItem(product, 1, product.volumen_ml ?? 250);
+    addItem(product, 1, product.volumen_ml ?? 20);
     toast.success(`${product.nombre} agregado al carrito.`, {
       description: "Puedes modificar las cantidades en el carrito de compras.",
       duration: 2500,

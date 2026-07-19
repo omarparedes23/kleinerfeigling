@@ -4,6 +4,21 @@ import { getTools } from "@/lib/ai/chat-config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { mkdir, appendFile } from "node:fs/promises";
+import path from "node:path";
+
+// Log de conversación en texto plano — solo para pruebas locales (no corre en producción/Vercel).
+const CHAT_LOG_PATH = path.join(process.cwd(), "logs", "chat.log.txt");
+
+async function logChat(entry: string) {
+  if (process.env.NODE_ENV === "production") return;
+  try {
+    await mkdir(path.dirname(CHAT_LOG_PATH), { recursive: true });
+    await appendFile(CHAT_LOG_PATH, entry, "utf-8");
+  } catch (err) {
+    console.error("[chat-log] Error escribiendo logs/chat.log.txt:", err);
+  }
+}
 
 const groq = createOpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -14,6 +29,19 @@ const deepseek = createOpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseURL: "https://api.deepseek.com",
 });
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+type ChatProvider = "openai" | "deepseek" | "groq";
+
+function resolveChatProvider(): ChatProvider {
+  const explicit = process.env.CHAT_PROVIDER?.toLowerCase();
+  if (explicit === "openai" || explicit === "deepseek" || explicit === "groq") return explicit;
+  // Sin CHAT_PROVIDER explícito: mantiene el comportamiento histórico (DeepSeek si hay key, si no Groq).
+  return process.env.DEEPSEEK_API_KEY ? "deepseek" : "groq";
+}
 
 export const maxDuration = 60;
 
@@ -40,16 +68,17 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 4. ❌ NUNCA confirmes un pedido sin verificar stock y envío.
 5. Los precios están en soles peruanos (S/).
 6. El delivery aplica solo en Lima metropolitana por ahora.
-7. Métodos de pago: tarjeta, Yape y Plin (todo a través de Culqi).
+7. Método de pago: tarjeta (Stripe), se paga desde la página del carrito.
 8. Si un producto no tiene stock, sugiere alternativas de sabor similar.
 9. ✅ Para confirmar pedido: SIEMPRE recopila dirección exacta (calle, número, referencias) Y distrito ANTES de llamar confirmar_pedido_chat.
 10. ❌ NUNCA llames confirmar_pedido_chat sin tener dirección y distrito confirmados por el usuario.
-11. ❌ NUNCA intentes crear cuentas de usuario ni pidas datos personales como nombre o contraseña. Si el usuario necesita crear cuenta: responde "Para crear tu cuenta entra al link de registro que aparece en pantalla — solo necesitas tu correo, te llegará un link mágico. Cuando vuelvas continuamos con tu pedido. 👉 [Crear cuenta](https://kleinerfeigling-navy.vercel.app/registro?next=/chat)". Si ya tiene cuenta: "Entra al link de login que aparece en pantalla. 👉 [Iniciar sesión](https://kleinerfeigling-navy.vercel.app/login?next=/chat)". El link Markdown es para la UI — la voz solo leerá la parte de texto antes del link.
+11. confirmar_pedido_chat NO crea el pedido — solo valida stock y distrito, y prepara el pago. El pedido real se crea recién cuando el usuario paga con tarjeta en /carrito.
+12. ❌ NUNCA intentes crear cuentas de usuario ni pidas datos personales como nombre o contraseña. Si el usuario necesita crear cuenta: responde "Para crear tu cuenta entra al link de registro que aparece en pantalla — solo necesitas tu correo, te llegará un link mágico. Cuando vuelvas continuamos con tu pedido. 👉 [Crear cuenta](https://kleinerfeigling-navy.vercel.app/registro?next=/chat)". Si ya tiene cuenta: "Entra al link de login que aparece en pantalla. 👉 [Iniciar sesión](https://kleinerfeigling-navy.vercel.app/login?next=/chat)". El link Markdown es para la UI — la voz solo leerá la parte de texto antes del link.
 
 ## REGLA ANTI-ALUCINACIÓN — HERRAMIENTAS (CRÍTICA)
 - ❌ NUNCA afirmes haber ejecutado una acción sin haber llamado la herramienta correspondiente.
 - ❌ NUNCA digas "ya agregué X al carrito" sin haber llamado agregar_al_carrito primero.
-- ❌ NUNCA digas "tu pedido está confirmado" sin haber llamado confirmar_pedido_chat primero.
+- ❌ NUNCA digas "tu pedido está confirmado" o "tu pedido fue creado" — el pedido recién se crea cuando el usuario paga en /carrito. Después de confirmar_pedido_chat, di que está "listo para pagar", no "confirmado".
 - Si el usuario confirma que quiere comprar → LLAMA agregar_al_carrito PRIMERO, luego responde con el resultado real de la herramienta.
 - La respuesta al usuario SIEMPRE debe basarse en el resultado real de la herramienta, nunca en suposiciones.
 
@@ -65,10 +94,11 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 - buscar_producto: cuando el usuario pide algo específico por nombre o sabor (ej: "Green Lemon", "algo con cereza").
 - verificar_stock: SIEMPRE antes de confirmar disponibilidad de un producto específico.
 - calcular_envio: cuando el usuario da un distrito o pregunta cuánto es el delivery.
-- agregar_al_carrito: cuando el usuario confirma que quiere agregar un producto al carrito.
+- agregar_al_carrito: cuando el usuario confirma que quiere agregar un producto al carrito (SUMA cantidad).
+- modificar_cantidad_carrito: cuando el usuario CORRIGE una cantidad ya agregada (ej. "mejor que sean 3", "no quiero ninguno de ese"). Fija la cantidad exacta — NUNCA uses agregar_al_carrito para corregir, eso suma en vez de corregir.
 - buscar_receta: cuando el usuario pide cócteles, recetas o preparaciones.
 - ver_carrito_chat: cuando el usuario pregunta qué tiene en su carrito, quiere ver el total o está listo para confirmar su pedido.
-- confirmar_pedido_chat: SOLO cuando tengas dirección y distrito confirmados y el usuario haya dicho explícitamente que desea proceder al pago.
+- confirmar_pedido_chat: SOLO cuando tengas dirección y distrito confirmados y el usuario haya dicho explícitamente que desea proceder al pago. Valida todo y prepara el pago — no crea el pedido.
 
 ## FLUJO DE VENTA RECOMENDADO
 1. Saluda y pregunta qué desea el usuario.
@@ -80,8 +110,9 @@ const SYSTEM_PROMPT = `Eres "Kleiner", el asistente virtual de ventas de Kleiner
 7. Pregunta la dirección de entrega (calle, número, referencias).
 8. Pregunta el distrito → usa calcular_envio → muestra el total (subtotal + envío).
 9. Pide confirmación explícita: "¿Confirmas el pedido de S/ [total] con delivery a [dirección], [distrito]?"
-10. Si el usuario confirma → usa confirmar_pedido_chat con dirección, distrito y notas opcionales.
-11. La tarjeta de confirmación incluirá el botón para pagar por Culqi (tarjeta, Yape o Plin).`;
+10. Si el usuario confirma → usa confirmar_pedido_chat con dirección, distrito y notas opcionales. Esto valida todo pero NO crea el pedido todavía.
+11. La tarjeta de confirmación incluirá el botón para ir al carrito y pagar con tarjeta — el pedido se crea recién ahí, al completar el pago.
+12. Si el usuario corrige una cantidad ya agregada (antes o después de confirmar_pedido_chat) → usa modificar_cantidad_carrito, nunca agregar_al_carrito.`;
 
 export async function POST(request: Request) {
   const reqStart = Date.now();
@@ -121,14 +152,12 @@ export async function POST(request: Request) {
     ? `${SYSTEM_PROMPT}\n\n## MODO VOZ (ACTIVO)\n- Responde en máximo 15 palabras.\n- Sin emojis, sin listas, sin precios individuales en texto — la UI los muestra en pantalla.\n- Al mostrar carrito: di SOLO "Aquí está tu carrito" o "Tienes X productos" — NUNCA listes nombres con precios.\n- Habla natural, como si fuera una conversación oral.\n- ❌ NUNCA leas URLs ni links. Di "entra al link en pantalla" y punto.`
     : SYSTEM_PROMPT;
 
-  // DeepSeek V3: contexto 64K, tool use nativo, sin límites de TPM estrictos.
-  // Fallback a Groq si no hay DEEPSEEK_API_KEY configurada.
-  const useDeepSeek = !!process.env.DEEPSEEK_API_KEY;
+  const provider = resolveChatProvider();
 
-  // Groq free tier necesita historial corto; DeepSeek soporta contexto completo.
+  // Groq free tier necesita historial corto (límite de TPM); OpenAI y DeepSeek soportan contexto completo.
   const MAX_HISTORY_GROQ = 4;
   const messages: CoreMessage[] =
-    !useDeepSeek && allMessages.length > MAX_HISTORY_GROQ
+    provider === "groq" && allMessages.length > MAX_HISTORY_GROQ
       ? allMessages.slice(-MAX_HISTORY_GROQ)
       : allMessages;
 
@@ -141,12 +170,23 @@ export async function POST(request: Request) {
         ? lastUser.content
         : JSON.stringify(lastUser.content);
     console.log(`👤 [USER] "${text.slice(0, 120)}"`);
+    logChat(`[${new Date().toISOString()}] ${isVoiceMode ? "🎙️ " : ""}USER: ${text}\n`);
   }
 
-  console.log(useDeepSeek ? "🔵 [DEEPSEEK] deepseek-chat" : "🟡 [GROQ] llama-3.1-8b-instant");
+  const openaiModel = process.env.OPENAI_CHAT_MODEL ?? "gpt-4o-mini";
+  const modelLabel =
+    provider === "openai" ? `🟢 [OPENAI] ${openaiModel}` :
+    provider === "deepseek" ? "🔵 [DEEPSEEK] deepseek-chat" :
+    "🟡 [GROQ] llama-3.1-8b-instant";
+  console.log(modelLabel);
+
+  const model =
+    provider === "openai" ? openai(openaiModel) :
+    provider === "deepseek" ? deepseek("deepseek-chat") :
+    groq("llama-3.1-8b-instant");
 
   const result = streamText({
-    model: useDeepSeek ? deepseek("deepseek-chat") : groq("llama-3.1-8b-instant"),
+    model,
     system: systemPrompt,
     messages,
     tools,
@@ -163,6 +203,11 @@ export async function POST(request: Request) {
       toolCalls?.forEach((t: any) =>
         console.log(`🔧 [TOOL] ${t.toolName}(${JSON.stringify(t.args).slice(0, 200)})`),
       );
+
+      const toolLines = (toolCalls ?? [])
+        .map((t: any) => `TOOL: ${t.toolName}(${JSON.stringify(t.args)})\n`)
+        .join("");
+      logChat(`${toolLines}BOT (${elapsed}ms): ${text || `[sin texto — finishReason: ${finishReason}]`}\n\n`);
     },
     onError: ({ error }: any) => {
       const msg = String(error?.message ?? error);

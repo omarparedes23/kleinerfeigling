@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useCart } from "@/hooks/use-cart";
+import { useCart, fetchCartItemsFromDb } from "@/hooks/use-cart";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -162,7 +162,7 @@ function ToolCard({ tool, add }: ToolCardProps) {
     case "buscar_receta":
       return <BuscarRecetaCard result={result} />;
     case "agregar_al_carrito":
-      return <AgregarAlCarritoCard result={result} args={args} add={add} />;
+      return <AgregarAlCarritoCard result={result} args={args} />;
     case "ver_carrito_chat":
       return <CartSummaryCard result={result} />;
     case "confirmar_pedido_chat":
@@ -475,16 +475,8 @@ function CartSummaryCard({ result }: { result: any }) {
 
 // ─── TOOL: confirmar_pedido_chat ───────────────────────────────
 function OrderConfirmedCard({ result }: { result: any }) {
-  const { clearCart } = useCart();
-  const hasClearedRef = useRef(false);
-
-  useEffect(() => {
-    if (result.ok && !hasClearedRef.current) {
-      hasClearedRef.current = true;
-      clearCart();
-    }
-  }, [result, clearCart]);
-
+  // El pedido todavía no existe acá — recién se crea al pagar en /carrito.
+  // El carrito sigue vivo hasta ese momento (carrito/page.tsx limpia Zustand tras un pago exitoso).
   if (!result.ok) {
     return (
       <Card className="border-rose-500/20 bg-rose-950/10 backdrop-blur-md">
@@ -507,8 +499,7 @@ function OrderConfirmedCard({ result }: { result: any }) {
             <Check className="h-5 w-5 stroke-[3px]" />
           </div>
           <div>
-            <h4 className="font-black text-sm text-amber-400 tracking-wide">¡Pedido Confirmado!</h4>
-            <p className="text-[10px] text-neutral-500 font-mono mt-0.5">{result.codigo_pedido}</p>
+            <h4 className="font-black text-sm text-amber-400 tracking-wide">¡Listo para pagar!</h4>
           </div>
         </div>
 
@@ -566,41 +557,40 @@ function OrderConfirmedCard({ result }: { result: any }) {
 function AgregarAlCarritoCard({
   result,
   args,
-  add,
 }: {
   result: any;
   args: any;
-  add: any;
 }) {
   const hasAddedRef = useRef(false);
 
   useEffect(() => {
-    // Crucial: Programmatically trigger the client-side Zustand store on tool success!
+    // El bot ya escribió el carrito en Supabase (tool agregar_al_carrito → RPC agregar_item_carrito).
+    // Acá solo reflejamos esa verdad en el Zustand local para que la UI (badge, drawer) se actualice —
+    // NO llamamos add()/la RPC de nuevo, eso duplicaría la cantidad.
     if (result?.ok && !hasAddedRef.current) {
       hasAddedRef.current = true;
-      const fetchAndAdd = async () => {
+      const refreshFromDb = async () => {
         try {
           const supabase = createClient();
-          const { data: product, error } = await supabase
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const items = await fetchCartItemsFromDb(supabase, user.id);
+          useCart.getState().setItems(items);
+
+          const { data: product } = await supabase
             .from("kleiner_products")
-            .select("*")
+            .select("nombre")
             .eq("id", args.product_id)
             .single();
-
-          if (product && !error) {
-            add(product, args.cantidad, product.volumen_ml);
-            // Show custom visual confirmation
-            toast.success(`Añadido: ${product.nombre} (x${args.cantidad}) 🥂`);
-          } else {
-            console.error("[AgregarAlCarritoCard] Product not found in Supabase:", error);
-          }
+          toast.success(`Añadido: ${product?.nombre ?? "Producto"} (x${args.cantidad}) 🥂`);
         } catch (err) {
-          console.error("[AgregarAlCarritoCard] Error fetching product details:", err);
+          console.error("[AgregarAlCarritoCard] Error refrescando carrito:", err);
         }
       };
-      fetchAndAdd();
+      refreshFromDb();
     }
-  }, [result, args, add]);
+  }, [result, args]);
 
   if (!result.ok) {
     return (

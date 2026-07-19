@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { 
+import { useRouter, useSearchParams } from "next/navigation";
+import {
   ShoppingBag, 
   Trash2, 
   Minus, 
@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { useStripe, useElements } from "@stripe/react-stripe-js";
 import { createClient } from "@/lib/supabase/client";
-import { useCart } from "@/hooks/use-cart";
+import { useCart, fetchCartItemsFromDb } from "@/hooks/use-cart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,33 +50,59 @@ const FALLBACK_DISTRICTS: District[] = [
 export default function CarritoPage() {
   return (
     <StripeProvider>
-      <CarritoPageContent />
+      <Suspense fallback={null}>
+        <CarritoPageContent />
+      </Suspense>
     </StripeProvider>
   );
 }
 
 function CarritoPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const stripe = useStripe();
   const elements = useElements();
-  
-  const { items, updateQuantity, remove, clearCart, getTotalPrice } = useCart();
-  
+
+  const { items, setItems, updateQuantity, remove, clearCart, getTotalPrice } = useCart();
+
   const [districts, setDistricts] = useState<District[]>([]);
   const [selectedDistrictId, setSelectedDistrictId] = useState<number | "">("");
   const [loadingDistricts, setLoadingDistricts] = useState(true);
-  
+
+  // El bot arma el carrito server-side (kleiner_cart_items) — relee de la DB al entrar
+  // para que /carrito muestre el carrito real sin importar si vino de voz o de clicks.
+  useEffect(() => {
+    async function hydrateFromDb() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const dbItems = await fetchCartItemsFromDb(supabase, user.id);
+      if (dbItems.length > 0) setItems(dbItems);
+    }
+    hydrateFromDb();
+  }, [supabase, setItems]);
+
   // Checkout states
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [orderCode, setOrderCode] = useState("");
-  
+
   // Checkout form inputs
   const [email, setEmail] = useState("");
   const [direccionEnvio, setDireccionEnvio] = useState("");
   const [notas, setNotas] = useState("");
+
+  // Precarga distrito/dirección/notas si el bot los mandó por query params (confirmar_pedido_chat)
+  useEffect(() => {
+    const distritoIdParam = searchParams.get("distrito_id");
+    const direccionParam = searchParams.get("direccion");
+    const notasParam = searchParams.get("notas");
+    if (distritoIdParam) setSelectedDistrictId(Number(distritoIdParam));
+    if (direccionParam) setDireccionEnvio(direccionParam);
+    if (notasParam) setNotas(notasParam);
+  }, [searchParams]);
+
   const [cardError, setCardError] = useState<string | null>(null);
 
   const subtotal = getTotalPrice();

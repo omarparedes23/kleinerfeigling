@@ -9,13 +9,81 @@ export const maxDuration = 30;
 // Recomendado para español: busca "Valentina" o "Laura" en Voice Library
 const VOICE_ID = "pFZP5JQG7iQjIQuC4Bku"; // Lily — multilingual, funciona bien en español
 
+type TtsProvider = "openai" | "elevenlabs";
+
+function resolveTtsProvider(): TtsProvider {
+  return process.env.TTS_PROVIDER?.toLowerCase() === "openai" ? "openai" : "elevenlabs";
+}
+
+async function synthesizeElevenLabs(text: string): Promise<Buffer> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) throw new Error("ELEVENLABS_API_KEY no configurado.");
+
+  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      model_id: "eleven_flash_v2_5",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`ElevenLabs status=${res.status} body="${errBody.slice(0, 500)}"`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function synthesizeOpenAI(text: string): Promise<Buffer> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY no configurado.");
+
+  const model = process.env.OPENAI_TTS_MODEL ?? "gpt-4o-mini-tts";
+  const voice = process.env.OPENAI_TTS_VOICE ?? "shimmer";
+
+  const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      voice,
+      input: text,
+      response_format: "mp3",
+    }),
+  });
+
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`OpenAI TTS status=${res.status} body="${errBody.slice(0, 500)}"`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export async function POST(request: NextRequest) {
   const start = Date.now();
   try {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
+    const provider = resolveTtsProvider();
+
+    if (provider === "elevenlabs" && !process.env.ELEVENLABS_API_KEY) {
       console.error("🔴 [TTS] ELEVENLABS_API_KEY no configurado en las variables de entorno.");
       return NextResponse.json({ error: "ELEVENLABS_API_KEY no configurado." }, { status: 400 });
+    }
+    if (provider === "openai" && !process.env.OPENAI_API_KEY) {
+      console.error("🔴 [TTS] OPENAI_API_KEY no configurado en las variables de entorno.");
+      return NextResponse.json({ error: "OPENAI_API_KEY no configurado." }, { status: 400 });
     }
 
     const { text } = (await request.json()) as { text: string };
@@ -24,9 +92,10 @@ export async function POST(request: NextRequest) {
     }
 
     const truncated = text.slice(0, 500);
-    const hash = createHash("md5").update(truncated).digest("hex");
+    // Prefijo con el provider: evita que un cambio de proveedor sirva audio cacheado del otro.
+    const hash = createHash("md5").update(`${provider}:${truncated}`).digest("hex");
 
-    console.log(`🔊 [TTS] ${truncated.length} chars — hash: ${hash.slice(0, 8)}... "${truncated.slice(0, 60)}"`);
+    console.log(`🔊 [TTS] provider=${provider} ${truncated.length} chars — hash: ${hash.slice(0, 8)}... "${truncated.slice(0, 60)}"`);
 
     // Cache lookup
     const supabase = createAdminClient();
@@ -47,34 +116,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: cached.r2_url, cached: true });
     }
 
-    // Cache MISS — llamar ElevenLabs
-    console.log(`📡 [TTS] Cache MISS — llamando ElevenLabs`);
-    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: truncated,
-        model_id: "eleven_flash_v2_5",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-        },
-      }),
-    });
-
-    console.log(`🔊 [TTS] ElevenLabs status: ${res.status} — ${Date.now() - start}ms`);
-
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`🔴 [TTS ERROR] status=${res.status} body="${errBody.slice(0, 500)}"`);
+    // Cache MISS — llamar al proveedor configurado
+    console.log(`📡 [TTS] Cache MISS — llamando ${provider}`);
+    let buffer: Buffer;
+    try {
+      buffer = provider === "openai" ? await synthesizeOpenAI(truncated) : await synthesizeElevenLabs(truncated);
+    } catch (synthError) {
+      console.error(`🔴 [TTS ERROR] provider=${provider}`, synthError);
       return NextResponse.json({ error: "Error al generar audio." }, { status: 500 });
     }
 
-    const buffer = Buffer.from(await res.arrayBuffer());
-    console.log(`✅ [TTS] ElevenLabs OK — ${buffer.length} bytes — ${Date.now() - start}ms`);
+    console.log(`✅ [TTS] ${provider} OK — ${buffer.length} bytes — ${Date.now() - start}ms`);
 
     // Subir a R2 y cachear — fallback a buffer si R2 falla
     try {

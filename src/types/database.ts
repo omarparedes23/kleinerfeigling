@@ -15,7 +15,6 @@ export type Database = {
           actualizado_en: string
           created_at: string
           id: string
-          session_data: Json
           usuario_id: string
         }
         Insert: {
@@ -23,7 +22,6 @@ export type Database = {
           actualizado_en?: string
           created_at?: string
           id?: string
-          session_data: Json
           usuario_id: string
         }
         Update: {
@@ -31,7 +29,6 @@ export type Database = {
           actualizado_en?: string
           created_at?: string
           id?: string
-          session_data?: Json
           usuario_id?: string
         }
         Relationships: [
@@ -40,6 +37,51 @@ export type Database = {
             columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "kleiner_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kleiner_cart_items: {
+        Row: {
+          actualizado_en: string
+          cantidad: number
+          cart_id: string
+          created_at: string
+          id: string
+          product_id: number
+          volumen_ml: number
+        }
+        Insert: {
+          actualizado_en?: string
+          cantidad: number
+          cart_id: string
+          created_at?: string
+          id?: string
+          product_id: number
+          volumen_ml: number
+        }
+        Update: {
+          actualizado_en?: string
+          cantidad?: number
+          cart_id?: string
+          created_at?: string
+          id?: string
+          product_id?: number
+          volumen_ml?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kleiner_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "kleiner_cart_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kleiner_cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "kleiner_products"
             referencedColumns: ["id"]
           },
         ]
@@ -431,6 +473,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agregar_item_carrito: {
+        Args: {
+          p_cantidad: number
+          p_product_id: number
+          p_usuario_id: string
+          p_volumen_ml: number
+        }
+        Returns: {
+          out_cart_id: string
+          out_total_items: number
+        }[]
+      }
       decrementar_stock_seguro: {
         Args: {
           p_cantidad: number
