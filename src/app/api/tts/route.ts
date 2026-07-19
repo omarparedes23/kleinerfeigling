@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: r2Url, cached: false });
     } catch (r2Error) {
       console.error(`🔴 [TTS] R2 upload falló, usando buffer fallback:`, r2Error);
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "audio/mpeg",
           "Cache-Control": "no-store",
